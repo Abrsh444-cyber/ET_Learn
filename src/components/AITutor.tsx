@@ -29,6 +29,21 @@ export default function AITutor({ apiKey, enrolledSubjects }: AITutorProps) {
 
   // Quiz state
   const [currentQuiz, setCurrentQuiz] = useState<any[] | null>(null);
+  const [particles, setParticles] = useState<{ id: number; left: number; top: number; color: string; duration: number; size: number }[]>([]);
+
+  const triggerDopaminePop = () => {
+    const colors = ['#C8962E', '#1A7A3C', '#BE1931', '#FFD700', '#1D4ED8'];
+    const newList = Array.from({ length: 30 }).map((_, i) => ({
+      id: Date.now() + i,
+      left: Math.random() * 85 + 5,
+      top: Math.random() * 30 + 40,
+      color: colors[i % colors.length],
+      duration: 0.8 + Math.random() * 0.7,
+      size: 5 + Math.random() * 7
+    }));
+    setParticles(newList);
+    setTimeout(() => setParticles([]), 2200);
+  };
   const [quizAnswers, setQuizAnswers] = useState<{ [qIndex: number]: string }>({});
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
@@ -100,11 +115,7 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
     const text = textToSend || inputValue;
     if (!text.trim()) return;
 
-    if (!apiKey) {
-      setErrorBanner("OpenRouter API Key is missing. Please set it in Settings or onboarding first.");
-      playFailureChime();
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
 
     const updatedUserMessages = [...messages, { role: 'user', content: text } as ChatMessage];
     setMessages(updatedUserMessages);
@@ -201,11 +212,7 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
 
   // Convert Quiz JSON array into full-screen dialog or helper view
   const triggerQuizGeneration = async () => {
-    if (!apiKey) {
-      setErrorBanner("To auto-generate an interactive quiz, provide an OpenRouter API Key in Settings.");
-      playFailureChime();
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
     setGeneratingQuiz(true);
     setCurrentQuiz(null);
     setQuizAnswers({});
@@ -237,7 +244,11 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
     setQuizScore(score);
     if (score === currentQuiz.length) {
       playSuccessChime();
+      triggerDopaminePop();
     } else {
+      if (score > 0) {
+        triggerDopaminePop();
+      }
       playClickChime();
     }
   };
@@ -314,8 +325,9 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
           <div className="space-y-4">
             {messages.map((msg, index) => (
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                 key={index}
                 className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
               >
@@ -355,19 +367,60 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
             ))}
 
             {isTyping && (
-              <div className="flex gap-3 max-w-[80%] mr-auto items-center">
-                <div className="w-8 h-8 rounded-full bg-[#1A7A3C]/10 border border-[#1A7A3C]/30 text-[#1A7A3C] flex items-center justify-center">
-                  <Bot className="w-4 h-4 animate-spin" />
-                </div>
-                <div className="bg-[#0D0D0D] text-zinc-400 text-xs px-4 py-2.5 rounded-full border border-[#2A2A2A] flex items-center gap-2">
-                  <span className="animate-pulse">OpenRouter is spelling out explanations</span>
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-[#C8962E] rounded-full animate-bounce"></span>
-                    <span className="w-1.5 h-1.5 bg-[#1A7A3C] rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                    <span className="w-1.5 h-1.5 bg-[#BE1931] rounded-full animate-bounce [animation-delay:0.3s]"></span>
+              <motion.div 
+                initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="flex flex-col gap-3.5 max-w-[85%] mr-auto p-4 bg-[#111] rounded-2xl border border-zinc-800/80 relative overflow-hidden shadow-2xl ml-1"
+              >
+                {/* Holographic shifting subtle gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-amber-500/5 to-rose-500/5 opacity-40 mix-blend-overlay animate-pulse pointer-events-none" />
+                
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="relative">
+                    {/* Spinning dual-colored background aura ring */}
+                    <div className="absolute -inset-1 rounded-full bg-gradient-to-tr from-[#C8962E] via-emerald-600 to-rose-600 opacity-70 blur-sm animate-spin [animation-duration:3s]" />
+                    <div className="w-8 h-8 rounded-full bg-[#0D0D0D] border border-zinc-750 text-[#C8962E] flex items-center justify-center relative z-10">
+                      <Bot className="w-4 h-4 text-amber-500 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs font-semibold text-zinc-200">EthioLearn AI Copilot</span>
+                    <span className="text-[10px] text-zinc-500 tracking-wider uppercase font-mono animate-pulse">Analyzing context & preparing dynamic slides...</span>
                   </div>
                 </div>
-              </div>
+
+                {/* Shimmering wireframe layout blocks */}
+                <div className="space-y-2 mt-1 relative z-10 w-64 md:w-80">
+                  <motion.div 
+                    animate={{ 
+                      opacity: [0.35, 0.85, 0.35],
+                    }}
+                    transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                    className="h-3 rounded bg-zinc-850 w-full relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#C8962E]/15 to-transparent w-full h-full -translate-x-full shimmer-sweep-animation" />
+                  </motion.div>
+                  <motion.div 
+                    animate={{ 
+                      opacity: [0.35, 0.85, 0.35],
+                    }}
+                    transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut", delay: 0.25 }}
+                    className="h-3 rounded bg-zinc-850 w-[92%] relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent w-full h-full -translate-x-full shimmer-sweep-animation" />
+                  </motion.div>
+                  <motion.div 
+                    animate={{ 
+                      opacity: [0.35, 0.85, 0.35],
+                    }}
+                    transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut", delay: 0.5 }}
+                    className="h-3 rounded bg-zinc-850 w-[78%] relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-rose-500/5 to-transparent w-full h-full -translate-x-full shimmer-sweep-animation" />
+                  </motion.div>
+                </div>
+              </motion.div>
             )}
             
             <div ref={messagesEndRef} />
@@ -390,8 +443,23 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="mb-4 bg-[#111111] p-4 rounded-xl border border-emerald-500/30 overflow-y-auto max-h-[300px]"
+          className="mb-4 bg-[#111111] p-4 rounded-xl border border-emerald-500/30 overflow-y-auto max-h-[300px] relative overflow-hidden"
         >
+          {/* Confetti floats */}
+          {particles.map(p => (
+            <div 
+              key={p.id}
+              className="absolute pointer-events-none rounded-full particle-reward-rise z-50"
+              style={{
+                left: `${p.left}%`,
+                top: `${p.top}%`,
+                backgroundColor: p.color,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                animationDuration: `${p.duration}s`
+              }}
+            />
+          ))}
           <div className="flex justify-between items-center mb-3">
             <h4 className="font-serif text-sm font-semibold text-[#1A7A3C] flex items-center gap-1.5">
               <HelpCircle className="w-4 h-4" /> Interactive Quiz: {quickChips[selectedSubject][0]}

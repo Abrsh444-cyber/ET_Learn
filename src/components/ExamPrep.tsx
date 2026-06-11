@@ -33,6 +33,21 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
 
   // Stats / Results
   const [examScore, setExamScore] = useState(0);
+  const [particles, setParticles] = useState<{ id: number; left: number; top: number; color: string; duration: number; size: number }[]>([]);
+
+  const triggerDopaminePop = () => {
+    const colors = ['#C8962E', '#1A7A3C', '#BE1931', '#FFD700', '#1D4ED8'];
+    const newList = Array.from({ length: 35 }).map((_, i) => ({
+      id: Date.now() + i,
+      left: Math.random() * 85 + 5,
+      top: Math.random() * 30 + 40,
+      color: colors[i % colors.length],
+      duration: 0.8 + Math.random() * 0.7,
+      size: 6 + Math.random() * 7
+    }));
+    setParticles(newList);
+    setTimeout(() => setParticles([]), 2200);
+  };
   const [examGrade, setExamGrade] = useState<'A' | 'B' | 'C' | 'D' | 'F'>('F');
   const [pastSessions, setPastSessions] = useState<any[]>([]);
 
@@ -150,12 +165,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
   };
 
   const handleGenerateMockAI = async () => {
-    if (!apiKey) {
-      setLoadingText("API Key missing. Enter your OpenRouter API key in Settings first.");
-      playFailureChime();
-      setTimeout(() => setLoadingText(null), 3000);
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
 
     setLoadingText(`Contacting AI to formulate a comprehensive ${difficulty} mock exam for you...`);
     playClickChime();
@@ -265,16 +275,15 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
     } catch(e) {}
 
     playSuccessChime();
+    if (percent >= 50) {
+      triggerDopaminePop();
+    }
   };
 
   // AI 5-Minute Revision summary tool
   const runRevisionAI = async () => {
     if (!revisionTopic.trim()) return;
-    if (!apiKey) {
-      setRevisionOutput("OpenRouter API Key is missing. Enter your key in Settings to unlock fast revisions.");
-      playFailureChime();
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
 
     setIsSummarizing(true);
     setRevisionOutput('');
@@ -575,8 +584,23 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
             key="results"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto bg-[#161616] p-6 rounded-2xl border border-[#2A2A2A] text-center space-y-6"
+            className="max-w-2xl mx-auto bg-[#161616] p-6 rounded-2xl border border-[#2A2A2A] text-center space-y-6 relative overflow-hidden"
           >
+            {/* Dopamine confetti floating particles */}
+            {particles.map(p => (
+              <div 
+                key={p.id}
+                className="absolute pointer-events-none rounded-full particle-reward-rise z-50"
+                style={{
+                  left: `${p.left}%`,
+                  top: `${p.top}%`,
+                  backgroundColor: p.color,
+                  width: `${p.size}px`,
+                  height: `${p.size}px`,
+                  animationDuration: `${p.duration}s`
+                }}
+              />
+            ))}
             <div className="w-20 h-20 bg-[#C8962E]/10 border border-[#C8962E]/30 text-[#C8962E] rounded-full flex items-center justify-center mx-auto text-3xl font-bold font-serif shadow-lg">
               {examGrade}
             </div>

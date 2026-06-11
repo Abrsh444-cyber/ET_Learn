@@ -157,11 +157,7 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
     e.preventDefault();
     if (!aiTopic.trim()) return;
 
-    if (!apiKey) {
-      setAiError("To unlock AI flashcard generation, please configure an OpenRouter API Key in Settings.");
-      playFailureChime();
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
 
     setIsGenerating(true);
     setAiError(null);

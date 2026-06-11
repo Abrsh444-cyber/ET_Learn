@@ -99,4 +99,33 @@
   animation: shimmer 1.5s infinite;
 }
 
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimmer-sweep-animation {
+  animation: shimmer-sweep 1.6s linear infinite;
+}
+
+@keyframes dopamine-pop {
+  0% { transform: scale(0.9); opacity: 0; filter: brightness(1.8); }
+  45% { transform: scale(1.1); filter: brightness(1.2); }
+  70% { transform: scale(0.98); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.dopamine-pop-active {
+  animation: dopamine-pop 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes rise-and-fade {
+  0% { transform: translateY(0) scale(0); opacity: 1; }
+  100% { transform: translateY(-120px) scale(0.85); opacity: 0; }
+}
+
+.particle-reward-rise {
+  animation: rise-and-fade 1.3s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
 

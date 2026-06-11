@@ -286,7 +286,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                   </button>
                 </div>
                 <p className="text-[11px] text-zinc-500">
-                  Highly recommended! Supports standard OpenRouter keys or direct Groq keys (<code className="font-mono text-zinc-400">gsk_...</code>) for high-performance, real-time AI tutoring and flashcards. Keys are kept safe inside local browser configurations.
+                  Optional. Leave blank to use our built-in high-performance server-side AI! Supports custom OpenRouter, Gemini (<code className="font-mono text-zinc-400">AIzaSy...</code>), or Groq (<code className="font-mono text-zinc-400">gsk_...</code>) keys if you want to use your own limits.
                 </p>
               </div>
 

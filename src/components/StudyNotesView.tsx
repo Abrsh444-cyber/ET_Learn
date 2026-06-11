@@ -138,11 +138,7 @@ export default function StudyNotesView({
     e.preventDefault();
     if (!aiNoteTopic.trim()) return;
 
-    if (!apiKey) {
-      setAiNoteErr("Provide an OpenRouter API Key in Settings to generate customized study sheets.");
-      playFailureChime();
-      return;
-    }
+    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
 
     setGeneratingNote(true);
     setAiNoteErr(null);

@@ -497,10 +497,10 @@ export default function App() {
         <AnimatePresence mode="wait">
           <motion.div
             key={currentPage}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.18 }}
+            initial={{ opacity: 0, scale: 0.985, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.99, y: -10 }}
+            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
             className={currentPage === 'tutor' ? "flex-1 flex flex-col min-h-0" : undefined}
           >
             
@@ -727,7 +727,7 @@ export default function App() {
                       onChange={(e) => handleUpdateProfile({ ...profile, claudeApiKey: e.target.value })}
                     />
                     <p className="text-[10px] text-zinc-500 pl-0.5 leading-normal">
-                      Provide your OpenRouter or direct Groq API Key (starts with <code className="font-mono text-zinc-400">gsk_...</code>). These keys are saved securely in your browser's persistent state.
+                      Optional override. If blank, the applet automatically falls back to our pre-configured server-side AI. Supports OpenRouter, Gemini (<code className="font-mono text-zinc-400">AIzaSy...</code>), or direct Groq (<code className="font-mono text-zinc-400">gsk_...</code>) keys.
                     </p>
                   </div>
 

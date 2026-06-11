@@ -1,40 +1,24 @@
 {
-  "short_name": "Aksum",
-  "name": "Aksum Pro",
-  "id": "/",
-  "description": "Aksum Pro - AI powered application",
+  "short_name": "EthioLearn",
+  "name": "EthioLearn Pro Campus",
+  "description": "Premium AI Learning Platform for Ethiopian University & High School Students",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "src": "/ethiolearn_icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/ethiolearn_icon.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ],
   "start_url": "/",
-  "scope": "/",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#0D0D0D",
+  "theme_color": "#0D0D0D",
   "display": "standalone",
-  "orientation": "portrait",
-  "screenshots": [
-    {
-      "src": "/screenshot-540.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshot-1280.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ]
+  "orientation": "portrait"
 }
