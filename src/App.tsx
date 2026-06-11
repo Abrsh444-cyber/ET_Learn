@@ -356,8 +356,39 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex flex-col md:flex-row select-none text-[#F0EDE8] relative font-sans antialiased">
+    <div className="min-h-screen bg-[#0D0D0D] flex flex-col md:flex-row select-none text-[#F0EDE8] relative font-sans antialiased overflow-x-hidden">
       
+      {/* Dynamic Cosmic Backdrops */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <motion.div 
+          animate={{
+            x: [0, 40, -30, 0],
+            y: [0, -50, 30, 0],
+            scale: [1, 1.15, 0.9, 1],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 22,
+            ease: "easeInOut"
+          }}
+          className="absolute top-1/4 left-1/4 w-[320px] h-[320px] rounded-full bg-gradient-to-br from-[#C8962E]/5 via-[#1A7A3C]/4 to-transparent blur-[100px]"
+        />
+        <motion.div 
+          animate={{
+            x: [0, -30, 30, 0],
+            y: [0, 40, -40, 0],
+            scale: [1, 0.95, 1.1, 1],
+          }}
+          transition={{
+            repeat: Infinity,
+            duration: 28,
+            ease: "easeInOut",
+            delay: 2
+          }}
+          className="absolute bottom-1/4 select-none right-1/4 w-[380px] h-[380px] rounded-full bg-gradient-to-tr from-rose-900/4 via-purple-900/3 to-transparent blur-[110px]"
+        />
+      </div>
+
       {/* Dynamic Toast Notifications */}
       <AnimatePresence>
         {toastMessage && (

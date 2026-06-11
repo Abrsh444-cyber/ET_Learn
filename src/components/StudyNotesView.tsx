@@ -371,102 +371,112 @@ export default function StudyNotesView({
             </div>
 
             {/* Note detailed viewer */}
-            <div className="lg:col-span-3 bg-[#161616] p-6 rounded-xl border border-[#2A2A2A] space-y-6 shadow-xl relative">
-              <div className="flex justify-between items-center pb-4 border-b border-[#2A2A2A] flex-wrap gap-2">
-                <div>
-                  <span className="text-xs text-[#1A7A3C] font-semibold tracking-wider font-mono uppercase">{selectedNote.subject}</span>
-                  <h2 className="font-serif text-xl font-black text-[#F0EDE8]">{selectedNote.title}</h2>
-                </div>
+            <div className="lg:col-span-3 bg-[#161616] rounded-xl border border-[#2A2A2A] relative overflow-hidden shadow-xl">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedNote.id}
+                  initial={{ opacity: 0, y: 16, scale: 0.99 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.99 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="p-6 space-y-6"
+                >
+                  <div className="flex justify-between items-center pb-4 border-b border-[#2A2A2A] flex-wrap gap-2">
+                    <div>
+                      <span className="text-xs text-[#1A7A3C] font-semibold tracking-wider font-mono uppercase">{selectedNote.subject}</span>
+                      <h2 className="font-serif text-xl font-black text-[#F0EDE8]">{selectedNote.title}</h2>
+                    </div>
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => exportNoteAsTxt(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
-                    className="px-3.5 py-1.5 bg-zinc-900 border border-[#2A2A2A] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Export Note
-                  </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => exportNoteAsTxt(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
+                        className="px-3.5 py-1.5 bg-zinc-900 border border-[#2A2A2A] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Export Note
+                      </button>
 
-                  {googleUser ? (
-                    <button
-                      onClick={() => handleExportToGoogleDoc(
-                        selectedNote.title,
-                        selectedNote.subject,
-                        selectedNote.intro + selectedNote.definition + selectedNote.explanation
+                      {googleUser ? (
+                        <button
+                          onClick={() => handleExportToGoogleDoc(
+                            selectedNote.title,
+                            selectedNote.subject,
+                            selectedNote.intro + selectedNote.definition + selectedNote.explanation
+                          )}
+                          disabled={isSyncingDoc}
+                          className="px-3.5 py-1.5 bg-[#C8962E] text-[#0D0D0D] font-bold rounded text-[11px] flex items-center gap-1.5 cursor-pointer hover:opacity-95 disabled:opacity-50"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> {isSyncingDoc ? 'Syncing...' : 'Sync to Google Doc'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={onGoogleSignIn}
+                          className="px-3.5 py-1.5 bg-gradient-to-r from-zinc-900 to-[#161616] hover:bg-zinc-800 border border-[#C8962E] text-[#C8962E] font-medium rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
+                          title="Connect Google account to sync directly to Google Sheets and Google Docs"
+                        >
+                          <span>Connect Sheets/Docs</span>
+                        </button>
                       )}
-                      disabled={isSyncingDoc}
-                      className="px-3.5 py-1.5 bg-[#C8962E] text-[#0D0D0D] font-bold rounded text-[11px] flex items-center gap-1.5 cursor-pointer hover:opacity-95 disabled:opacity-50"
-                    >
-                      <FileText className="w-3.5 h-3.5" /> {isSyncingDoc ? 'Syncing...' : 'Sync to Google Doc'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={onGoogleSignIn}
-                      className="px-3.5 py-1.5 bg-gradient-to-r from-zinc-900 to-zinc-850 hover:bg-zinc-800 border border-[#C8962E] text-[#C8962E] font-medium rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
-                      title="Connect Google account to sync directly to Google Sheets and Google Docs"
-                    >
-                      <span>Connect Sheets/Docs</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              {/* Note Content */}
-              <div className="space-y-4 text-xs md:text-sm leading-relaxed text-zinc-300">
-                <p className="font-sans italic">{selectedNote.intro}</p>
+                  {/* Note Content */}
+                  <div className="space-y-4 text-xs md:text-sm leading-relaxed text-zinc-300">
+                    <p className="font-sans italic">{selectedNote.intro}</p>
 
-                {/* Key Definition Golden border box */}
-                <div className="border-l-4 border-[#C8962E] bg-[#0D0D0D] p-4 rounded-r-xl shadow-inner mt-4">
-                  <span className="text-[10px] text-[#C8962E] uppercase font-mono tracking-widest font-bold block mb-1">Key Concept Definition</span>
-                  <p className="font-serif leading-relaxed text-zinc-200 font-medium">{selectedNote.definition}</p>
-                </div>
+                    {/* Key Definition Golden border box */}
+                    <div className="border-l-4 border-[#C8962E] bg-[#0D0D0D] p-4 rounded-r-xl shadow-inner mt-4">
+                      <span className="text-[10px] text-[#C8962E] uppercase font-mono tracking-widest font-bold block mb-1">Key Concept Definition</span>
+                      <p className="font-serif leading-relaxed text-zinc-200 font-medium">{selectedNote.definition}</p>
+                    </div>
 
-                {/* Main explanation content body split */}
-                <div className="whitespace-pre-line text-sm mt-4 leading-relaxed font-sans">{selectedNote.explanation}</div>
+                    {/* Main explanation content body split */}
+                    <div className="whitespace-pre-line text-sm mt-4 leading-relaxed font-sans">{selectedNote.explanation}</div>
 
-                {/* Concept diagram ASCII/SVG segment */}
-                <div className="mt-8 space-y-2">
-                  <span className="text-xs text-[#1A7A3C] font-bold tracking-wider font-mono uppercase">Mechanics Diagram visualization:</span>
-                  <pre className="bg-[#0D0D0D] border border-[#2A2A2A] p-4 rounded-xl font-mono text-xs text-center text-[#C8962E] block overflow-x-auto leading-loose selection:bg-zinc-800">
-                    {selectedNote.diagram}
-                  </pre>
-                </div>
+                    {/* Concept diagram ASCII/SVG segment */}
+                    <div className="mt-8 space-y-2">
+                      <span className="text-xs text-[#1A7A3C] font-bold tracking-wider font-mono uppercase">Mechanics Diagram visualization:</span>
+                      <pre className="bg-[#0D0D0D] border border-[#2A2A2A] p-4 rounded-xl font-mono text-xs text-center text-[#C8962E] block overflow-x-auto leading-loose selection:bg-zinc-800">
+                        {selectedNote.diagram}
+                      </pre>
+                    </div>
 
-                {/* Summary Table block */}
-                <div className="mt-8 space-y-3">
-                  <span className="text-xs text-[#1A7A3C] font-bold tracking-wider font-mono uppercase">Matrix Summary details:</span>
-                  <div className="overflow-x-auto rounded-lg border border-[#2A2A2A]">
-                    <table className="w-full text-xs text-left">
-                      <thead className="bg-[#0D0D0D] text-zinc-400 text-[10px] uppercase font-mono">
-                        <tr>
-                          {selectedNote.summaryTable.header.map((h: string) => (
-                            <th key={h} className="p-3 border-b border-[#2A2A2A]">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
-                        {selectedNote.summaryTable.rows.map((row: string[], rIdx: number) => (
-                          <tr key={rIdx} className="hover:bg-zinc-900/60 transition-colors">
-                            {row.map((cell, cIdx) => (
-                              <td key={cIdx} className="p-3 text-zinc-300">{cell}</td>
+                    {/* Summary Table block */}
+                    <div className="mt-8 space-y-3">
+                      <span className="text-xs text-[#1A7A3C] font-bold tracking-wider font-mono uppercase">Matrix Summary details:</span>
+                      <div className="overflow-x-auto rounded-lg border border-[#2A2A2A]">
+                        <table className="w-full text-xs text-left">
+                          <thead className="bg-[#0D0D0D] text-zinc-400 text-[10px] uppercase font-mono">
+                            <tr>
+                              {selectedNote.summaryTable.header.map((h: string) => (
+                                <th key={h} className="p-3 border-b border-[#2A2A2A]">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#2A2A2A] bg-[#161616]">
+                            {selectedNote.summaryTable.rows.map((row: string[], rIdx: number) => (
+                              <tr key={rIdx} className="hover:bg-zinc-900/60 transition-colors">
+                                {row.map((cell, cIdx) => (
+                                  <td key={cIdx} className="p-3 text-zinc-300">{cell}</td>
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Mnemonics tricks segment */}
+                    <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-xl flex items-center gap-3 mt-6">
+                      <Clipboard className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <div className="text-xs text-zinc-300">
+                        <span className="font-bold text-emerald-400">Study Mnemonic device: </span>
+                        {selectedNote.mnemonics}
+                      </div>
+                    </div>
+
                   </div>
-                </div>
-
-                {/* Mnemonics tricks segment */}
-                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-xl flex items-center gap-3 mt-6">
-                  <Clipboard className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <div className="text-xs text-zinc-300">
-                    <span className="font-bold text-emerald-400">Study Mnemonic device: </span>
-                    {selectedNote.mnemonics}
-                  </div>
-                </div>
-
-              </div>
-
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         )}

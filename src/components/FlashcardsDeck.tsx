@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
 import { 
   Layers, Search, Check, AlertTriangle, Sparkles, BookOpen, ChevronLeft, ChevronRight, HelpCircle, Flame, Filter, HelpCircleIcon
 } from 'lucide-react';
@@ -28,6 +28,19 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
   const [useGeez, setUseGeez] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Real tactile swipe and drag motion values
+  const [activeSwipeDirection, setActiveSwipeDirection] = useState<'left' | 'right' | null>(null);
+  const dragX = useMotionValue(0);
+  const rotateCard = useTransform(dragX, [-200, 200], [-15, 15]);
+  const dragOpacity = useTransform(dragX, [-200, -150, 0, 150, 200], [0.65, 0.9, 1, 0.9, 0.65]);
+  const [dragged, setDragged] = useState(false);
+
+  const handleCardClick = () => {
+    if (dragged) return;
+    setIsFlipped(!isFlipped);
+    playClickChime();
+  };
+
   // AI generation fields
   const [aiTopic, setAiTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -55,6 +68,12 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
     setCurrentIndex(0);
     setIsFlipped(false);
   }, [selectedDeckId, decksState]);
+
+  // Reset drag mechanics cleanly on switches
+  useEffect(() => {
+    dragX.set(0);
+    setActiveSwipeDirection(null);
+  }, [currentIndex, selectedDeckId]);
 
   if (!activeDeck) {
     return <div className="p-8 text-center text-zinc-500">Retrieving Flashcards Decks...</div>;
@@ -300,55 +319,97 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
           ) : (
             <div className="space-y-4">
               
-              {/* Card stage box with perspective */}
-              <div 
-                onClick={() => { setIsFlipped(!isFlipped); playClickChime(); }}
-                className="w-full h-72 md:h-80 cursor-pointer [perspective:1000px]"
-              >
-                <div className={`relative w-full h-full duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
-                  
-                  {/* Front Side */}
-                  <div className="absolute inset-0 bg-[#161616] border border-[#2A2A2A] rounded-2xl p-6 flex flex-col justify-between [backface-visibility:hidden] shadow-lg">
-                    <div className="flex justify-between items-center text-zinc-500 text-[10px] uppercase font-mono tracking-wider">
-                      <span>Card Index: {useGeez ? toGeezNumeral(currentIndex + 1) : currentIndex + 1} / {useGeez ? toGeezNumeral(totalCardsCount) : totalCardsCount}</span>
-                      <span className="text-[#C8962E] flex items-center gap-0.5"><Flame className="w-3.5 h-3.5" /> Due Today</span>
-                    </div>
-
-                    <div className="text-center px-4">
-                      <p className="font-serif text-lg md:text-xl font-medium text-[#F0EDE8] tracking-wide leading-relaxed">
-                        {currentCard?.question}
-                      </p>
-                    </div>
-
-                    <div className="text-center text-zinc-500 text-[11px] italic flex items-center justify-center gap-1.5">
-                      <span>Click card anywhere to expose correct answers</span>
-                    </div>
-                  </div>
-
-                  {/* Back Side */}
-                  <div className="absolute inset-0 bg-[#161616] border border-[#C8962E]/20 rounded-2xl p-6 flex flex-col justify-between [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-2xl shadow-[#C8962E]/5">
-                    <div className="flex justify-between items-center text-zinc-500 text-[10px] uppercase font-mono tracking-wider">
-                      <span>Explanation details</span>
-                      <span className="text-[#1A7A3C] font-semibold">Self Assessment</span>
-                    </div>
-
-                    <div className="text-center px-4 overflow-y-auto max-h-[160px] space-y-2">
-                      <p className="text-sm md:text-base font-semibold text-[#C8962E] tracking-normal leading-relaxed">
-                        {currentCard?.answer}
-                      </p>
-                      {currentCard?.explanation && (
-                        <p className="text-[11px] text-[#8A8480] text-center leading-normal">
-                          {currentCard.explanation}
-                        </p>
+              {/* Card stage box with perspective & tactile swipe dragging mechanics */}
+              <div className="relative w-full h-72 md:h-80 select-none">
+                <motion.div 
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.6}
+                  style={{ x: dragX, rotate: rotateCard, opacity: dragOpacity }}
+                  onDragStart={() => setDragged(true)}
+                  onDrag={(event, info) => {
+                    if (info.offset.x < -35) {
+                      setActiveSwipeDirection('left');
+                    } else if (info.offset.x > 35) {
+                      setActiveSwipeDirection('right');
+                    } else {
+                      setActiveSwipeDirection(null);
+                    }
+                  }}
+                  onDragEnd={(event, info) => {
+                    setActiveSwipeDirection(null);
+                    if (info.offset.x < -130) {
+                      handleRate(1); // Again (Red)
+                    } else if (info.offset.x > 130) {
+                      handleRate(5); // Easy (Green)
+                    }
+                    setTimeout(() => setDragged(false), 80);
+                  }}
+                  onClick={handleCardClick}
+                  className="w-full h-full cursor-grab active:cursor-grabbing [perspective:1000px] relative z-10"
+                >
+                  <div className={`relative w-full h-full duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
+                    
+                    {/* Front Side */}
+                    <div className="absolute inset-0 bg-[#161616] border border-[#2A2A2A] rounded-2xl p-6 flex flex-col justify-between [backface-visibility:hidden] shadow-lg overflow-hidden">
+                      {/* Swipe Visual Guidance Overlay Pills */}
+                      {activeSwipeDirection === 'left' && (
+                        <div className="absolute inset-0 bg-[#BE1931]/10 border-2 border-[#BE1931] flex items-center justify-center z-30 pointer-events-none backdrop-blur-[2px]">
+                          <div className="bg-[#BE1931] text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-xl uppercase tracking-widest flex items-center gap-2">
+                            <span>RE-REVIEW AGAIN</span> <span>💔</span>
+                          </div>
+                        </div>
                       )}
+                      
+                      {activeSwipeDirection === 'right' && (
+                        <div className="absolute inset-0 bg-[#1A7A3C]/10 border-2 border-emerald-500 flex items-center justify-center z-30 pointer-events-none backdrop-blur-[2px]">
+                          <div className="bg-emerald-600 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-xl uppercase tracking-widest flex items-center gap-2">
+                            <span>EASY / PASSED</span> <span>🎉</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-zinc-500 text-[10px] uppercase font-mono tracking-wider">
+                        <span>Card Index: {useGeez ? toGeezNumeral(currentIndex + 1) : currentIndex + 1} / {useGeez ? toGeezNumeral(totalCardsCount) : totalCardsCount}</span>
+                        <span className="text-[#C8962E] flex items-center gap-0.5"><Flame className="w-3.5 h-3.5" /> Due Today</span>
+                      </div>
+
+                      <div className="text-center px-4">
+                        <p className="font-serif text-lg md:text-xl font-medium text-[#F0EDE8] tracking-wide leading-relaxed">
+                          {currentCard?.question}
+                        </p>
+                      </div>
+
+                      <div className="text-center text-zinc-500 text-[11px] italic flex items-center justify-center gap-1.5">
+                        <span>Click card anywhere to translate / flip</span>
+                      </div>
                     </div>
 
-                    <div className="text-center text-zinc-500 text-[11px] italic">
-                      Click anywhere to flip cards back
+                    {/* Back Side */}
+                    <div className="absolute inset-0 bg-[#161616] border border-[#C8962E]/20 rounded-2xl p-6 flex flex-col justify-between [transform:rotateY(180deg)] [backface-visibility:hidden] shadow-2xl shadow-[#C8962E]/5 overflow-hidden">
+                      <div className="flex justify-between items-center text-zinc-500 text-[10px] uppercase font-mono tracking-wider">
+                        <span>Explanation details</span>
+                        <span className="text-[#1A7A3C] font-semibold">Self Assessment</span>
+                      </div>
+
+                      <div className="text-center px-4 overflow-y-auto max-h-[160px] space-y-2">
+                        <p className="text-sm md:text-base font-semibold text-[#C8962E] tracking-normal leading-relaxed">
+                          {currentCard?.answer}
+                        </p>
+                        {currentCard?.explanation && (
+                          <p className="text-[11px] text-[#8A8480] text-center leading-normal">
+                            {currentCard.explanation}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="text-center text-zinc-500 text-[11px] italic">
+                        Click anywhere to flip cards back
+                      </div>
                     </div>
+
                   </div>
-
-                </div>
+                </motion.div>
               </div>
 
               {/* SM-2 Interactive review scoring buttons */}
