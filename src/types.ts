@@ -12,6 +12,7 @@ export interface StudentProfile {
   dailyGoalHours: number;
   theme: 'dark' | 'light' | 'auto';
   language: 'en' | 'am' | 'both';
+  avatar?: string; // Preset name or Base64 string of student photo
 }
 
 export interface Flashcard {

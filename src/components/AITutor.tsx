@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, submitClaudeChat, generateQuizAI } from '../utils/ai';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
+import AITutorLogo from './AITutorLogo';
 
 interface AITutorProps {
   apiKey: string;
@@ -247,8 +248,8 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
       {/* Top Banner Control */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-[#111] p-4 rounded-xl border border-zinc-800 mb-4 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#C8962E]/10 flex items-center justify-center text-[#C8962E] border border-[#C8962E]/20">
-            <Bot className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-lg bg-[#C8962E]/10 flex items-center justify-center border border-[#C8962E]/20 overflow-hidden shrink-0">
+            <AITutorLogo size={40} />
           </div>
           <div>
             <h2 className="font-serif text-lg font-bold text-[#F0EDE8]">EthioLearn AI Tutor</h2>
@@ -319,12 +320,12 @@ Always end your tutoring messages with 2-3 specific, challenging academic practi
                 className={`flex gap-3 max-w-[85%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
               >
                 {/* Bubble avatar logo */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 overflow-hidden border ${
                   msg.role === 'user' 
                     ? 'bg-[#C8962E]/10 border-[#C8962E]/30 text-[#C8962E]' 
-                    : 'bg-[#1A7A3C]/10 border-[#1A7A3C]/30 text-[#1A7A3C]'
+                    : 'bg-[#1A7A3C]/5 border-[#1A7A3C]/20 text-[#1A7A3C]'
                 }`}>
-                  {msg.role === 'user' ? 'U' : <Bot className="w-4 h-4" />}
+                  {msg.role === 'user' ? 'U' : <AITutorLogo size={32} />}
                 </div>
 
                 {/* Message actual bubble representation */}

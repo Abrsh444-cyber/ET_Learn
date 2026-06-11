@@ -12,18 +12,40 @@ import { CustomNote } from '../types';
 import { PREBUILT_STUDY_NOTES } from '../data/prebuiltContent';
 import { generateNoteAI } from '../utils/ai';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
+import { User } from 'firebase/auth';
+import { exportNoteToGoogleDoc, exportNotesToGoogleSheets } from '../utils/workspace';
 
 interface StudyNotesViewProps {
   apiKey: string;
   customNotes: CustomNote[];
   onSaveCustomNotes: (notes: CustomNote[]) => void;
   enrolledSubjects: string[];
+  googleUser: User | null;
+  googleToken: string | null;
+  onGoogleSignIn: () => Promise<void>;
+  onGoogleSignOut: () => Promise<void>;
 }
 
-export default function StudyNotesView({ apiKey, customNotes, onSaveCustomNotes, enrolledSubjects }: StudyNotesViewProps) {
+export default function StudyNotesView({ 
+  apiKey, 
+  customNotes, 
+  onSaveCustomNotes, 
+  enrolledSubjects,
+  googleUser,
+  googleToken,
+  onGoogleSignIn,
+  onGoogleSignOut
+}: StudyNotesViewProps) {
   const [activeTab, setActiveTab] = useState<'prebuilt' | 'ai_generator' | 'notepad'>('prebuilt');
   const [selectedNoteId, setSelectedNoteId] = useState<'note_et' | 'note_ec' | 'note_bi' | 'note_eg' | 'note_mc'>('note_et');
   const [selectedNote, setSelectedNote] = useState<any>(PREBUILT_STUDY_NOTES[0]);
+
+  // Google Workspace Sync States
+  const [isSyncingDoc, setIsSyncingDoc] = useState(false);
+  const [isSyncingSheet, setIsSyncingSheet] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncDocUrl, setSyncDocUrl] = useState<string | null>(null);
+  const [syncSheetUrl, setSyncSheetUrl] = useState<string | null>(null);
 
   // AI Generator state
   const [aiNoteTopic, setAiNoteTopic] = useState('');
@@ -39,6 +61,64 @@ export default function StudyNotesView({ apiKey, customNotes, onSaveCustomNotes,
   const [isSavedToast, setIsSavedToast] = useState(false);
 
   const editorRef = useRef<HTMLDivElement>(null);
+
+  // Sync Note to Google Doc
+  const handleExportToGoogleDoc = async (title: string, subject: string, content: string) => {
+    if (!googleUser || !googleToken) {
+      setSyncMessage("Please connect your Google Account first!");
+      playFailureChime();
+      return;
+    }
+
+    setIsSyncingDoc(true);
+    setSyncMessage(null);
+    setSyncDocUrl(null);
+    playClickChime();
+
+    try {
+      const result = await exportNoteToGoogleDoc(title, subject, content, googleToken);
+      setSyncDocUrl(result.url);
+      setSyncMessage(`"${title}" exported as a Google Doc!`);
+      playSuccessChime();
+    } catch (err: any) {
+      setSyncMessage(`Docs Sync failed: ${err.message || err}`);
+      playFailureChime();
+    } finally {
+      setIsSyncingDoc(false);
+    }
+  };
+
+  // Sync All Custom Study Notes to Google Sheet
+  const handleExportAllToGoogleSheets = async () => {
+    if (!googleUser || !googleToken) {
+      setSyncMessage("Please connect your Google Account first!");
+      playFailureChime();
+      return;
+    }
+
+    if (customNotes.length === 0) {
+      setSyncMessage("Create some custom study notes first before syncing!");
+      playFailureChime();
+      return;
+    }
+
+    setIsSyncingSheet(true);
+    setSyncMessage(null);
+    setSyncSheetUrl(null);
+    playClickChime();
+
+    try {
+      const result = await exportNotesToGoogleSheets(customNotes, googleToken);
+      setSyncSheetUrl(result.url);
+      setSyncMessage(`Success! Saved ${customNotes.length} notes in Google Sheets!`);
+      playSuccessChime();
+    } catch (err: any) {
+      setSyncMessage(`Sheets Sync failed: ${err.message || err}`);
+      playFailureChime();
+    } finally {
+      setIsSyncingSheet(false);
+    }
+  };
 
   const colorsList = [
     { class: 'bg-emerald-950/20 border-emerald-500/30 text-emerald-400', name: 'Emerald' },
@@ -210,6 +290,58 @@ export default function StudyNotesView({ apiKey, customNotes, onSaveCustomNotes,
         </button>
       </div>
 
+      {/* Google Workspace Connection Banner / Feedback */}
+      {(syncMessage || googleUser) && (
+        <div className="bg-[#111111] border border-[#2A2A2A] p-3.5 rounded-xl flex items-center justify-between flex-wrap gap-3 text-xs shadow-inner">
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${googleUser ? 'bg-[#1A7A3C] animate-pulse' : 'bg-zinc-700'}`}></div>
+            <span className="text-zinc-400">
+              {googleUser ? (
+                <span>Connected to Google as <strong className="text-[#C8962E]">{googleUser.email}</strong></span>
+              ) : (
+                <span>Unbound cloud environments.</span>
+              )}
+            </span>
+            {syncMessage && (
+              <span className="text-zinc-200 ml-2 border-l border-zinc-800 pl-3 font-semibold">{syncMessage}</span>
+            )}
+          </div>
+
+          <div className="flex gap-3 items-center">
+            {syncDocUrl && (
+              <a
+                href={syncDocUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-emerald-400 font-bold hover:underline flex items-center gap-1 text-[11px]"
+              >
+                <span>Google Doc</span>
+                <span className="text-zinc-600">↗</span>
+              </a>
+            )}
+            {syncSheetUrl && (
+              <a
+                href={syncSheetUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#C8962E] font-bold hover:underline flex items-center gap-1 text-[11px]"
+              >
+                <span>Google Sheet</span>
+                <span className="text-zinc-600">↗</span>
+              </a>
+            )}
+            {googleUser && (
+              <button
+                onClick={onGoogleSignOut}
+                className="text-zinc-500 hover:text-rose-400 text-[10px] uppercase font-mono font-bold tracking-widest pl-2 cursor-pointer transition-colors"
+              >
+                Disconnect
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <AnimatePresence mode="wait">
         
         {/* Prebuilt Handbook Tab */}
@@ -250,12 +382,36 @@ export default function StudyNotesView({ apiKey, customNotes, onSaveCustomNotes,
                   <h2 className="font-serif text-xl font-black text-[#F0EDE8]">{selectedNote.title}</h2>
                 </div>
 
-                <button
-                  onClick={() => exportNoteAsTxt(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
-                  className="px-3.5 py-1.5 bg-zinc-900 border border-[#2A2A2A] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" /> Export Note
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportNoteAsTxt(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
+                    className="px-3.5 py-1.5 bg-zinc-900 border border-[#2A2A2A] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Export Note
+                  </button>
+
+                  {googleUser ? (
+                    <button
+                      onClick={() => handleExportToGoogleDoc(
+                        selectedNote.title,
+                        selectedNote.subject,
+                        selectedNote.intro + selectedNote.definition + selectedNote.explanation
+                      )}
+                      disabled={isSyncingDoc}
+                      className="px-3.5 py-1.5 bg-[#C8962E] text-[#0D0D0D] font-bold rounded text-[11px] flex items-center gap-1.5 cursor-pointer hover:opacity-95 disabled:opacity-50"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> {isSyncingDoc ? 'Syncing...' : 'Sync to Google Doc'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={onGoogleSignIn}
+                      className="px-3.5 py-1.5 bg-gradient-to-r from-zinc-900 to-zinc-850 hover:bg-zinc-800 border border-[#C8962E] text-[#C8962E] font-medium rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
+                      title="Connect Google account to sync directly to Google Sheets and Google Docs"
+                    >
+                      <span>Connect Sheets/Docs</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Note Content */}
@@ -516,14 +672,46 @@ export default function StudyNotesView({ apiKey, customNotes, onSaveCustomNotes,
               />
 
               {/* Save triggers */}
-              <div className="flex justify-between items-center pt-2">
-                <button
-                  onClick={() => exportNoteAsTxt(noteTitle || "Raw_Note", noteContent)}
-                  disabled={!noteTitle.trim()}
-                  className="text-[11px] text-zinc-500 hover:text-[#C8962E] flex items-center gap-1.5 cursor-pointer disabled:opacity-30"
-                >
-                  <Download className="w-3.5 h-3.5" /> Download text
-                </button>
+              <div className="flex justify-between items-center pt-3 border-t border-[#2A2A2A] mt-4 flex-wrap gap-3">
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => exportNoteAsTxt(noteTitle || "Raw_Note", noteContent)}
+                    disabled={!noteTitle.trim()}
+                    className="text-[11px] text-zinc-500 hover:text-[#C8962E] flex items-center gap-1.5 cursor-pointer disabled:opacity-30"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Txt guide
+                  </button>
+
+                  {googleUser ? (
+                    <>
+                      <button
+                        onClick={() => handleExportToGoogleDoc(noteTitle, noteSubject, noteContent)}
+                        disabled={!noteTitle.trim() || isSyncingDoc}
+                        className="text-[11px] text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-30"
+                        title="Export this note as a beautifully formatted Google Doc"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> {isSyncingDoc ? 'Exporting...' : 'Sync Active Note'}
+                      </button>
+
+                      <button
+                        onClick={handleExportAllToGoogleSheets}
+                        disabled={customNotes.length === 0 || isSyncingSheet}
+                        className="text-[11px] text-[#C8962E] hover:text-[#e0af43] flex items-center gap-1.5 cursor-pointer disabled:opacity-30"
+                        title="Sync all notepad sheets into a single Google Sheets database"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> {isSyncingSheet ? 'Syncing...' : 'Export Portfolio to Sheets'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={onGoogleSignIn}
+                      className="text-[11px] text-[#C8962E] hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Authorize Google integration to enable real-time cloud document sync"
+                    >
+                      <span>Connect Sheets/Docs Sync</span>
+                    </button>
+                  )}
+                </div>
 
                 <button
                   onClick={saveToNotepad}

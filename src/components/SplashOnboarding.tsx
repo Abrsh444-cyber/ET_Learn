@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile } from '../types';
 import { playClickChime } from '../utils/audio';
 import { Key, User, Landmark, GraduationCap, ArrowRight, Info, Eye, EyeOff } from 'lucide-react';
+import EthioLearnLogo from './EthioLearnLogo';
+import StudentAvatarSelector from './StudentAvatarSelector';
 
 interface SplashOnboardingProps {
   onComplete: (profile: StudentProfile) => void;
@@ -19,6 +21,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const [name, setName] = useState('');
   const [university, setUniversity] = useState('');
   const [year, setYear] = useState('1st Year');
+  const [avatar, setAvatar] = useState('star');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([
     "Emerging Technologies", "Introduction to Economics", "General Biology", "Communicative English", "Moral and Civic Education"
   ]);
@@ -40,6 +43,9 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       setYear(initialProfile.year);
       setSelectedSubjects(initialProfile.subjects);
       setClaudeApiKey(initialProfile.claudeApiKey);
+      if (initialProfile.avatar) {
+        setAvatar(initialProfile.avatar);
+      }
     }
   }, [initialProfile]);
 
@@ -55,7 +61,8 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       claudeApiKey: claudeApiKey.trim(),
       dailyGoalHours: 2,
       theme: 'dark',
-      language: 'both'
+      language: 'both',
+      avatar
     };
     playClickChime();
     onComplete(profile);
@@ -83,45 +90,16 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
             transition={{ duration: 0.6 }}
             className="text-center max-w-lg flex flex-col items-center"
           >
-            {/* Highly detailed Lalibela Cross SVG (Intricate gold design) */}
-            <div className="relative w-40 h-40 mb-8 flex items-center justify-center">
-              <div class="absolute inset-0 bg-[#C8962E]/10 rounded-full blur-xl"></div>
-              <svg 
-                className="w-32 h-32 text-[#C8962E] animate-slow-rotate" 
-                viewBox="0 0 100 100" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2.5"
-                strokeLinecap="round" 
-                strokeLinejoin="round"
+            {/* Official brand app icon logo */}
+            <div className="relative w-44 h-44 mb-8 flex items-center justify-center">
+              <div className="absolute inset-0 bg-[#C8962E]/15 rounded-full blur-2xl animate-pulse"></div>
+              <motion.div
+                initial={{ scale: 0.8, rotate: -5 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 15 }}
               >
-                {/* Outer frame structure */}
-                <path d="M50 5 L50 95 M5 50 L95 50" strokeWidth="3" />
-                
-                {/* Central lattice cross diamond shapes */}
-                <rect x="42" y="42" width="16" height="16" rx="2" strokeWidth="2" fill="#161616" />
-                <path d="M42 42 L58 58 M58 42 L42 58" />
-                
-                {/* Upper crown block */}
-                <path d="M38 18 L62 18 L50 5 Z" fill="#161616" />
-                <circle cx="50" cy="11" r="2" fill="#C8962E" />
-                
-                {/* Lower base stand representation */}
-                <path d="M38 82 L62 82 L50 95 Z" fill="#161616" />
-                <circle cx="50" cy="89" r="2" fill="#C8962E" />
-
-                {/* Left wing detailing */}
-                <path d="M18 38 L18 62 L5 50 Z" fill="#161616" />
-                <circle cx="11" cy="50" r="2" fill="#C8962E" />
-
-                {/* Right wing detailing */}
-                <path d="M82 38 L82 62 L95 50 Z" fill="#161616" />
-                <circle cx="89" cy="50" r="2" fill="#C8962E" />
-
-                {/* Overlocking squares / decorative lines representing ancient carving */}
-                <rect x="30" y="30" width="40" height="40" rx="4" />
-                <rect x="35" y="35" width="30" height="30" rx="3" strokeDasharray="3 3" />
-              </svg>
+                <EthioLearnLogo size={144} showCardBackground={true} />
+              </motion.div>
             </div>
 
             <motion.h1 
@@ -181,9 +159,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
           >
             {/* Mini logo inside onboarding */}
             <div className="flex items-center gap-3 mb-6 border-b border-[#C8962E]/10 pb-4">
-              <div className="w-10 h-10 rounded-lg bg-[#C8962E]/10 flex items-center justify-center text-[#C8962E] font-serif font-bold text-2xl border border-[#C8962E]/20">
-                ኤ
-              </div>
+              <EthioLearnLogo size={42} />
               <div>
                 <h3 className="font-serif text-lg font-bold text-[#F0EDE8]">Student Onboarding</h3>
                 <p className="text-xs text-[#8A8480]">ኢትዮ ለርን ፕሮ • Custom Study Plan</p>
@@ -203,6 +179,18 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-[#0D0D0D] border border-[#2A2A2A] focus:border-[#C8962E] rounded-lg px-4 py-3 text-[#F0EDE8] outline-none text-sm transition-colors"
+                />
+              </div>
+
+              {/* Student Profile Picture Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#C8962E]">
+                  Choose Profile Picture
+                </label>
+                <StudentAvatarSelector
+                  currentAvatar={avatar}
+                  name={name || 'Student'}
+                  onChange={setAvatar}
                 />
               </div>
 
@@ -264,21 +252,27 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 </div>
               </div>
 
-              {/* OpenRouter API Key input */}
+              {/* OpenRouter or Groq API Key input */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold uppercase tracking-wider text-[#C8962E] flex items-center gap-2">
-                    <Key className="w-4 h-4" /> OpenRouter API Key
+                    <Key className="w-4 h-4" /> OpenRouter or Groq API Key
                   </label>
-                  <span className="text-[10px] text-zinc-500 hover:text-[#C8962E] flex items-center gap-1">
-                    <Info className="w-3 h-3" />
-                    <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="underline">Get key here</a>
+                  <span className="text-[10px] text-zinc-500 hover:text-[#C8962E] flex items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="underline">OpenRouter</a>
+                    </span>
+                    <span>|</span>
+                    <span className="flex items-center gap-1">
+                      <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="underline">Groq Console</a>
+                    </span>
                   </span>
                 </div>
                 <div className="relative">
                   <input
                     type={showKey ? "text" : "password"}
-                    placeholder="sk-or-..."
+                    placeholder="sk-or-... or gsk_..."
                     value={claudeApiKey}
                     onChange={(e) => setClaudeApiKey(e.target.value)}
                     className="w-full bg-[#0D0D0D] border border-[#2A2A2A] focus:border-[#C8962E] rounded-lg pl-4 pr-10 py-3 text-[#F0EDE8] outline-none text-sm font-mono transition-colors"
@@ -292,7 +286,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                   </button>
                 </div>
                 <p className="text-[11px] text-zinc-500">
-                  Highly recommended for personalized tutoring, flashcard generation, and mock test design. Key is stored locally in your browser.
+                  Highly recommended! Supports standard OpenRouter keys or direct Groq keys (<code className="font-mono text-zinc-400">gsk_...</code>) for high-performance, real-time AI tutoring and flashcards. Keys are kept safe inside local browser configurations.
                 </p>
               </div>
 

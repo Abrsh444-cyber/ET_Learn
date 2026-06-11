@@ -13,9 +13,22 @@ import { playClickChime, playSuccessChime } from '../utils/audio';
 interface AnalyticsDashboardProps {
   analyticsData: any;
   onExport: () => void;
+  googleUser: any;
+  googleToken: string | null;
+  isExportingSheets: boolean;
+  onGoogleSignIn: () => Promise<void>;
+  onSyncStatsToSheets: () => Promise<void>;
 }
 
-export default function AnalyticsDashboard({ analyticsData, onExport }: AnalyticsDashboardProps) {
+export default function AnalyticsDashboard({ 
+  analyticsData, 
+  onExport,
+  googleUser,
+  googleToken,
+  isExportingSheets,
+  onGoogleSignIn,
+  onSyncStatsToSheets
+}: AnalyticsDashboardProps) {
   const barChartRef = useRef<HTMLCanvasElement>(null);
   const doughnutChartRef = useRef<HTMLCanvasElement>(null);
   const lineChartRef = useRef<HTMLCanvasElement>(null);
@@ -308,12 +321,32 @@ export default function AnalyticsDashboard({ analyticsData, onExport }: Analytic
             <p className="text-xs text-zinc-400 leading-normal pl-0.5">{personalityDesc.desc}</p>
           </div>
 
-          <button
-            onClick={() => { playSuccessChime(); onExport(); }}
-            className="w-full mt-4 py-2.5 bg-[#0D0D0D] border border-[#2A2A2A] hover:border-[#C8962E]/40 hover:bg-[#161616] text-zinc-300 font-semibold rounded text-xs flex items-center justify-center gap-2 cursor-pointer transition-transform hover:scale-[1.01]"
-          >
-            <Download className="w-4 h-4 text-[#C8962E]" /> Export Learning Sheets JSON
-          </button>
+          <div className="space-y-2 mt-4">
+            <button
+              onClick={() => { playSuccessChime(); onExport(); }}
+              className="w-full py-2 bg-[#0D0D0D] border border-[#2A2A2A] hover:border-zinc-700 hover:bg-[#161616] text-zinc-400 font-semibold rounded text-xs flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" /> Export Offline JSON
+            </button>
+
+            {googleUser ? (
+              <button
+                onClick={onSyncStatsToSheets}
+                disabled={isExportingSheets}
+                className="w-full py-2.5 bg-[#C8962E] hover:opacity-95 text-[#0D0D0D] font-bold rounded text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all shadow"
+              >
+                <Zap className="w-4 h-4 text-[#0d0d0d] fill-[#0d0d0d]" /> 
+                {isExportingSheets ? 'Syncing spreadsheet...' : 'Sync Stats to Google Sheets'}
+              </button>
+            ) : (
+              <button
+                onClick={onGoogleSignIn}
+                className="w-full py-2.5 bg-gradient-to-r from-zinc-900 to-zinc-850 border border-[#C8962E] hover:bg-zinc-800 text-[#C8962E] font-semibold rounded text-xs flex items-center justify-center gap-2 cursor-pointer transition-transform hover:scale-[1.01]"
+              >
+                <Zap className="w-4 h-4 text-[#C8962E]" /> Connect Google Sheets Sync
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

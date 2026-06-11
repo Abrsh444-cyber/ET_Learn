@@ -17,16 +17,28 @@ import FlashcardsDeck from './components/FlashcardsDeck';
 import ExamPrep from './components/ExamPrep';
 import StudyNotesView from './components/StudyNotesView';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import EthioLearnLogo from './components/EthioLearnLogo';
+import StudentAvatar from './components/StudentAvatar';
+import StudentAvatarSelector from './components/StudentAvatarSelector';
+import { exportOfflineHTML } from './utils/offlineExporter';
 
 import { ETHIOPIAN_PROVERBS } from './data/ethiopianProverbs';
 import { getEthiopianDate, toGeezNumeral, ETHIOPIAN_HOLIDAYS } from './utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from './utils/audio';
+
+import { initAuth, googleSignIn, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
+import { User } from 'firebase/auth';
 
 export default function App() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'tutor' | 'flashcards' | 'exam' | 'notes' | 'analytics' | 'settings'>('dashboard');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
+  // Google Auth states for Sheets/Docs integration
+  const [googleUser, setGoogleUser] = useState<User | null>(null);
+  const [googleToken, setGoogleToken] = useState<string | null>(null);
+  const [isExportingSheets, setIsExportingSheets] = useState(false);
+
   // Local states
   const [decksState, setDecksState] = useState<{ [deckId: string]: Flashcard[] }>({});
   const [customNotes, setCustomNotes] = useState<CustomNote[]>([]);
@@ -41,7 +53,93 @@ export default function App() {
   // Setup/Onboarding loader
   const [isLoading, setIsLoading] = useState(true);
 
+  const handleGoogleSignIn = async () => {
+    try {
+      playClickChime();
+      const result = await googleSignIn();
+      if (result) {
+        setGoogleUser(result.user);
+        setGoogleToken(result.accessToken);
+        showToast(`Connected Google Account: ${result.user.email}`);
+      }
+    } catch (err: any) {
+      showToast(`Google Sign-In failed: ${err.message || err}`);
+    }
+  };
+
+  const handleGoogleSignOut = async () => {
+    try {
+      playClickChime();
+      await logoutGoogle();
+      setGoogleUser(null);
+      setGoogleToken(null);
+      showToast("Google account credentials signed out.");
+    } catch (err: any) {
+      showToast(`Google Sign-out failed: ${err.message || err}`);
+    }
+  };
+
+  const handleSyncStatsToSheets = async () => {
+    if (!googleUser || !googleToken) {
+      showToast("Please sign in with Google to enable Sheets Sync.");
+      return;
+    }
+    setIsExportingSheets(true);
+    playClickChime();
+    try {
+      const { url } = await exportAnalyticsToGoogleSheets(
+        profile?.name || 'Student',
+        profile?.university || 'Ethiopian High School/Uni',
+        profile?.year || 'Freshman',
+        streak,
+        totalStudyHours,
+        dailyHoursGoal,
+        googleToken
+      );
+      playSuccessChime();
+      showToast("Performance logged to a beautiful Google Spreadsheet!");
+      window.open(url, '_blank');
+    } catch (err: any) {
+      playFailureChime();
+      showToast(`Sync failed: ${err.message || err}`);
+    } finally {
+      setIsExportingSheets(false);
+    }
+  };
+
+  const handleDownloadOfflineCompanion = () => {
+    try {
+      playClickChime();
+      const htmlContent = exportOfflineHTML(profile, customNotes, decksState, totalStudyHours, streak);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${profile ? profile.name.replace(/\s+/g, '_') : 'Student'}_EthioLearn_Offline_Campus.html`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      playSuccessChime();
+      showToast("Offline Study Pack downloaded! Open this file to study fully offline anywhere.");
+    } catch (err: any) {
+      playFailureChime();
+      showToast(`Package creation failed: ${err.message || err}`);
+    }
+  };
+
   useEffect(() => {
+    // 0. Initialize Google Workspace OAuth Connection Listener
+    const unsubscribeAuth = initAuth(
+      (user, token) => {
+        setGoogleUser(user);
+        setGoogleToken(token);
+      },
+      () => {
+        setGoogleUser(null);
+        setGoogleToken(null);
+      }
+    );
+
     // 1. Check offline conditions
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
@@ -109,6 +207,7 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('keydown', handleShortcuts);
+      if (unsubscribeAuth) unsubscribeAuth();
     };
   }, []);
 
@@ -288,9 +387,7 @@ export default function App() {
           
           {/* Main Logo wordmark with styling */}
           <div className="flex items-center gap-3 pb-4 border-b border-[#2A2A2A]">
-            <div className="w-10 h-10 rounded-xl bg-[#C8962E]/10 flex items-center justify-center border border-[#C8962E]/20 text-[#C8962E] font-serif font-black text-2xl">
-              ኤ
-            </div>
+            <EthioLearnLogo size={42} />
             <div>
               <h1 className="font-serif text-base font-bold tracking-tight text-[#F0EDE8]">EthioLearn Pro</h1>
               <p className="text-[10px] text-[#1A7A3C] uppercase tracking-widest font-black">ተማር • አድግ • ብልጽግ</p>
@@ -338,10 +435,13 @@ export default function App() {
 
         {/* Profile Card and log out widget */}
         <div className="border-t border-[#2A2A2A] pt-4 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-full bg-[#C8962E]/15 border border-[#C8962E]/30 flex items-center justify-center font-bold font-serif text-[#C8962E]">
-              {profile.name.substring(0, 1).toUpperCase()}
-            </div>
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <StudentAvatar 
+              avatar={profile.avatar} 
+              name={profile.name} 
+              size={32} 
+              className="border border-[#C8962E]/30" 
+            />
             <div className="overflow-hidden">
               <p className="font-medium truncate max-w-[100px] text-zinc-200">{profile.name}</p>
               <p className="text-[10px] text-zinc-500 truncate max-w-[100px]">{profile.university}</p>
@@ -535,6 +635,10 @@ export default function App() {
                 customNotes={customNotes}
                 onSaveCustomNotes={handleSaveCustomNotes}
                 enrolledSubjects={profile.subjects}
+                googleUser={googleUser}
+                googleToken={googleToken}
+                onGoogleSignIn={handleGoogleSignIn}
+                onGoogleSignOut={handleGoogleSignOut}
               />
             )}
 
@@ -543,6 +647,11 @@ export default function App() {
               <AnalyticsDashboard 
                 analyticsData={null} 
                 onExport={handleExportDataAsJson} 
+                googleUser={googleUser}
+                googleToken={googleToken}
+                isExportingSheets={isExportingSheets}
+                onGoogleSignIn={handleGoogleSignIn}
+                onSyncStatsToSheets={handleSyncStatsToSheets}
               />
             )}
 
@@ -578,6 +687,16 @@ export default function App() {
                     />
                   </div>
 
+                  {/* Campus Photo Identity */}
+                  <div className="space-y-2">
+                    <label className="text-zinc-400 font-semibold">Change Campus Identity Photo</label>
+                    <StudentAvatarSelector
+                      currentAvatar={profile.avatar}
+                      name={profile.name}
+                      onChange={(newAvatar) => handleUpdateProfile({ ...profile, avatar: newAvatar })}
+                    />
+                  </div>
+
                   {/* Target Goal Hours */}
                   <div className="space-y-1">
                     <label className="text-zinc-400 font-semibold font-sans">Daily Goal (Hours)</label>
@@ -595,21 +714,89 @@ export default function App() {
                     />
                   </div>
 
-                  {/* OpenRouter API details update */}
+                  {/* OpenRouter / Groq API details update */}
                   <div className="space-y-1.5 p-3.5 bg-[#0D0D0D] rounded-xl border border-[#2A2A2A]">
                     <label className="text-zinc-400 font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
-                      <Key className="w-4 h-4 text-[#C8962E]" /> OpenRouter API Key
+                      <Key className="w-4 h-4 text-[#C8962E]" /> OpenRouter / Groq API Key
                     </label>
                     <input
                       type="password"
-                      placeholder="sk-or-..."
+                      placeholder="sk-or-... or gsk_..."
                       className="w-full bg-[#161616] border border-[#2A2A2A] rounded-lg p-2.5 text-xs text-[#C8962E] font-mono outline-none"
                       value={profile.claudeApiKey}
                       onChange={(e) => handleUpdateProfile({ ...profile, claudeApiKey: e.target.value })}
                     />
                     <p className="text-[10px] text-zinc-500 pl-0.5 leading-normal">
-                      Provide your OpenRouter API Key to allow the server to fetch interactive quiz elements, flashcards, and notes. Saved with 'ethiolearn_' browser namespaces safely.
+                      Provide your OpenRouter or direct Groq API Key (starts with <code className="font-mono text-zinc-400">gsk_...</code>). These keys are saved securely in your browser's persistent state.
                     </p>
+                  </div>
+
+                  {/* Google Sheets / Docs Integration card */}
+                  <div className="space-y-1.5 p-3.5 bg-[#0D0D0D] rounded-xl border border-dashed border-[#C8962E]/25">
+                    <label className="text-[#C8962E] font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4" /> Google Sheets & Docs Cloud Sync
+                    </label>
+                    <p className="text-[11px] text-zinc-400 pl-0.5 leading-normal">
+                      Authorize your Google Workspace account to sync handwritten booklets to Google Documents, and automatically log study metrics into Google Sheets spreadsheet databases.
+                    </p>
+                    
+                    {googleUser ? (
+                      <div className="flex justify-between items-center bg-[#151515] p-3 rounded-lg border border-[#222]">
+                        <div className="space-y-1">
+                          <span className="text-[10px] bg-emerald-950/40 border border-emerald-500/20 text-emerald-400 font-mono py-0.5 px-2 rounded-full inline-block">CONNECTED API AGENT</span>
+                          <p className="text-xs font-semibold text-zinc-200">{googleUser.email}</p>
+                        </div>
+                        <button
+                          onClick={handleGoogleSignOut}
+                          className="px-3 py-1.5 bg-rose-950/20 hover:bg-rose-900/30 border border-rose-500/20 text-rose-400 text-xs rounded font-medium transition-colors cursor-pointer"
+                        >
+                          Disconnect Account
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleGoogleSignIn}
+                        className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 border border-[#C8962E] text-[#C8962E] font-bold rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                      >
+                        Securely Authenticate Google Workspace
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Progressive App Caching & Offline Local Backups */}
+                  <div className="space-y-1.5 p-3.5 bg-[#0D0D0D] rounded-xl border border-dashed border-[#1A7A3C]/40">
+                    <label className="text-[#1A7A3C] font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5">
+                      <WifiOff className="w-4 h-4" /> Progressive App Caching & Offline Download
+                    </label>
+                    <p className="text-[11px] text-zinc-400 pl-0.5 leading-normal">
+                      EthioLearn Pro leverages dynamic Service Worker caching to run fully offline. You can also export a standalone, portable HTML Study Companion containing your exact notes, student profile photo, and active memory flashcards.
+                    </p>
+
+                    <div className="flex items-center gap-2.5 bg-[#121212] p-2.5 rounded-lg border border-zinc-900 mb-2">
+                      <div className="relative flex h-3 w-3">
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isOffline ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                        <span className={`relative inline-flex rounded-full h-3 w-3 ${isOffline ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                      </div>
+                      <div className="text-[11px]">
+                        <span className="font-semibold text-zinc-200 block">
+                          {isOffline ? 'OFFLINE SATELLITE ACTIVE' : 'SECURE SERVICE WORKER ONLINE'}
+                        </span>
+                        <span className="text-zinc-500 block leading-normal">
+                          {isOffline 
+                            ? 'Operating offline. Core notes, flashcards, and test preps remain active.' 
+                            : 'All core assets, custom components, and themes are fully precached.'
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleDownloadOfflineCompanion}
+                      className="w-full py-2.5 bg-[#1B6F42]/10 hover:bg-[#1B6F42]/20 border border-[#1B6F42]/40 text-[#4ADE80] font-bold rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                    >
+                      <span>📥</span> Download Portable Offline Campus (.html)
+                    </button>
                   </div>
 
                   {/* Danger zones reset options */}

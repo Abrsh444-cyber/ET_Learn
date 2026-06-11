@@ -24,7 +24,7 @@ async function startServer() {
       const { messages, system, userApiKey, model } = req.body;
       
       // Prioritize client-provided API key from settings, then fallback to server env
-      const apiKey = userApiKey || req.headers['x-api-key'] || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY; 
+      const apiKey = userApiKey || req.headers['x-api-key'] || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY; 
       
       if (!apiKey) {
         return res.status(401).json({ 
@@ -34,6 +34,9 @@ async function startServer() {
 
       // Check if we can use native Google Gemini API directly (if key is Google API Key or fallback is used)
       const useGeminiDirectly = apiKey.startsWith('AIzaSy') || (!userApiKey && process.env.GEMINI_API_KEY && apiKey === process.env.GEMINI_API_KEY);
+
+      // Check if we can use Groq API directly (if key is a Groq Key or fallback is used)
+      const useGroqDirectly = apiKey.startsWith('gsk_') || (!userApiKey && process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
 
       if (useGeminiDirectly) {
         // Configure chunks for Server-Sent Events (SSE) streaming helper
@@ -77,6 +80,119 @@ async function startServer() {
         }
 
         res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+
+      if (useGroqDirectly) {
+        console.log('[EthioLearn Server] Routing chat request directly to Groq Cloud API');
+        
+        // Convert Anthropic-messages and system prompt structure to OpenAI-compatible message array
+        const groqMessages = [];
+        if (system) {
+          groqMessages.push({ role: 'system', content: system });
+        }
+        if (Array.isArray(messages)) {
+          groqMessages.push(...messages);
+        }
+
+        // Configure columns for Server-Sent Events (SSE) streaming helper
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        // Resolve suitable Groq model or default to the premium llama-3.3-70b-versatile
+        let finalGroqModel = model || 'llama-3.3-70b-versatile';
+        if (
+          finalGroqModel.includes('claude') || 
+          finalGroqModel.includes('sonnet') || 
+          finalGroqModel.includes('gpt') ||
+          finalGroqModel === 'claude-3-5-sonnet-20241022'
+        ) {
+          finalGroqModel = 'llama-3.3-70b-versatile';
+        }
+
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: finalGroqModel,
+            messages: groqMessages,
+            stream: true,
+            max_tokens: 2048,
+          }),
+        });
+
+        if (!groqResponse.ok) {
+          const errBody = await groqResponse.text();
+          console.error('Groq API returned error:', errBody);
+          return res.status(groqResponse.status).json({ error: errBody });
+        }
+
+        if (!groqResponse.body) {
+          return res.status(500).json({ error: 'Response body is empty. Could not initiate Groq stream.' });
+        }
+
+        const reader = groqResponse.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+
+            if (cleanLine.startsWith('data:')) {
+              const rawData = cleanLine.substring(5).trim();
+              if (rawData === '[DONE]') {
+                res.write('data: [DONE]\n\n');
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(rawData);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  const legacyChunk = {
+                    type: 'content_block_delta',
+                    delta: { text: content }
+                  };
+                  res.write(`data: ${JSON.stringify(legacyChunk)}\n\n`);
+                }
+              } catch (e) {
+                // Ignore partial JSON blocks
+              }
+            }
+          }
+        }
+
+        if (buffer && buffer.startsWith('data:')) {
+          const rawData = buffer.substring(5).trim();
+          if (rawData !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(rawData);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                const legacyChunk = {
+                  type: 'content_block_delta',
+                  delta: { text: content }
+                };
+                res.write(`data: ${JSON.stringify(legacyChunk)}\n\n`);
+              }
+            } catch (e) {}
+          }
+        }
+
         res.end();
         return;
       }
