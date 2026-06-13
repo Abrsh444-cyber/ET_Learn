@@ -5,6 +5,7 @@
 
 export interface StudentProfile {
   name: string;
+  email?: string;
   university: string;
   year: string;
   subjects: string[];

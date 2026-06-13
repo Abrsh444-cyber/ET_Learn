@@ -14,6 +14,7 @@ import { generateNoteAI } from '../utils/ai';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
 import { User } from 'firebase/auth';
 import { exportNoteToGoogleDoc, exportNotesToGoogleSheets } from '../utils/workspace';
+import { jsPDF } from 'jspdf';
 
 interface StudyNotesViewProps {
   apiKey: string;
@@ -240,17 +241,104 @@ export default function StudyNotesView({
     }
   };
 
-  const exportNoteAsTxt = (title: string, rawHtml: string) => {
+  const exportNoteAsPdf = (title: string, rawHtml: string) => {
     playClickChime();
-    // Simple html tag remover
-    const plainText = rawHtml.replace(/<[^>]*>/g, '\n');
-    const blob = new Blob([`ETHIOLEARN STUDY NOTE: ${title}\n===================================\n${plainText}`], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${title.replace(/\s+/g, '_')}_note.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Page margin borders
+    doc.setDrawColor(200, 150, 46); // EthioLearn gold (#C8962E)
+    doc.setLineWidth(0.5);
+    doc.rect(5, 5, 200, 287);
+
+    // Header Content
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text("ETHIOLEARN STUDENT PORTAL - STUDY COMPANION", 12, 12);
+    doc.text("24/7 INTERACTIVE CAMPUS", 145, 12);
+
+    doc.setDrawColor(42, 42, 42); // slate divider line
+    doc.line(10, 15, 200, 15);
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(200, 150, 46);
+    doc.text(title.toUpperCase(), 12, 25);
+
+    // Gold decorative ruler
+    doc.setDrawColor(200, 150, 46);
+    doc.setLineWidth(1.5);
+    doc.line(12, 29, 80, 29);
+
+    let y = 38;
+
+    // Helper functions to clean and wrap text appropriately
+    let cleanText = rawHtml
+      .replace(/<h1[^>]*>/gi, '\n\nSUMMARY / MAIN POINT\n-------------------------\n')
+      .replace(/<h2[^>]*>/gi, '\n\nSUBJECT CONCEPT\n-------------------------\n')
+      .replace(/<h3[^>]*>/gi, '\n\nDETAIL EXPLANATION\n')
+      .replace(/<p[^>]*>/gi, '\n\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '\n* ')
+      .replace(/<[^>]*>/g, ''); 
+
+    cleanText = cleanText
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'");
+
+    const textLines = cleanText.split('\n');
+
+    textLines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        y += 2;
+        return;
+      }
+      
+      const isHeader = line.includes('---') || line === 'SUMMARY / MAIN POINT' || line === 'SUBJECT CONCEPT' || line === 'DETAIL EXPLANATION';
+      if (isHeader) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(26, 122, 60); 
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+      }
+
+      const wrapped = doc.splitTextToSize(line, 185);
+      wrapped.forEach((wl: string) => {
+        if (y > 275) {
+          doc.addPage();
+          y = 20;
+
+          doc.setDrawColor(200, 150, 46);
+          doc.setLineWidth(0.5);
+          doc.rect(5, 5, 200, 287);
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(120, 120, 120);
+          doc.text(`STUDY NOTES: ${title.toUpperCase()} (CONTINUED)`, 12, 12);
+          doc.setDrawColor(42, 42, 42);
+          doc.line(10, 15, 200, 15);
+        }
+        doc.text(wl, 12, y);
+        y += 6;
+      });
+    });
+
+    doc.save(`${title.replace(/\s+/g, '_')}_note.pdf`);
     playSuccessChime();
   };
 
@@ -389,10 +477,10 @@ export default function StudyNotesView({
 
                     <div className="flex gap-2">
                       <button
-                        onClick={() => exportNoteAsTxt(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
+                        onClick={() => exportNoteAsPdf(selectedNote.title, selectedNote.intro + selectedNote.definition + selectedNote.explanation)}
                         className="px-3.5 py-1.5 bg-zinc-900 border border-[#2A2A2A] hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded text-[11px] flex items-center gap-1.5 cursor-pointer"
                       >
-                        <Download className="w-3.5 h-3.5" /> Export Note
+                        <Download className="w-3.5 h-3.5" /> Export PDF Note
                       </button>
 
                       {googleUser ? (
@@ -681,11 +769,11 @@ export default function StudyNotesView({
               <div className="flex justify-between items-center pt-3 border-t border-[#2A2A2A] mt-4 flex-wrap gap-3">
                 <div className="flex gap-4">
                   <button
-                    onClick={() => exportNoteAsTxt(noteTitle || "Raw_Note", noteContent)}
+                    onClick={() => exportNoteAsPdf(noteTitle || "Raw_Note", noteContent)}
                     disabled={!noteTitle.trim()}
                     className="text-[11px] text-zinc-500 hover:text-[#C8962E] flex items-center gap-1.5 cursor-pointer disabled:opacity-30"
                   >
-                    <Download className="w-3.5 h-3.5" /> Txt guide
+                    <Download className="w-3.5 h-3.5" /> PDF Guide
                   </button>
 
                   {googleUser ? (

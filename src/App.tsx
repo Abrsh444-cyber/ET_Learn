@@ -22,6 +22,7 @@ import EthioLearnLogo from './components/EthioLearnLogo';
 import StudentAvatar from './components/StudentAvatar';
 import StudentAvatarSelector from './components/StudentAvatarSelector';
 import { exportOfflineHTML } from './utils/offlineExporter';
+import { jsPDF } from 'jspdf';
 
 import { ETHIOPIAN_PROVERBS } from './data/ethiopianProverbs';
 import { getEthiopianDate, toGeezNumeral, ETHIOPIAN_HOLIDAYS } from './utils/ethiopianCalendar';
@@ -29,6 +30,77 @@ import { playClickChime, playSuccessChime, playFailureChime } from './utils/audi
 
 import { initAuth, googleSignIn, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
 import { User } from 'firebase/auth';
+
+// ---------------------------------------------------------
+// SECURE USER STORAGE SANDBOXING (LOCAL STORAGE INTERCEPTOR)
+// This intercepts and isolates guest/user sessions under unique suffixes
+// while keeping the accounts data global.
+// ---------------------------------------------------------
+if (typeof window !== 'undefined') {
+  const originalGetItem = localStorage.getItem;
+  const originalSetItem = localStorage.setItem;
+  const originalRemoveItem = localStorage.removeItem;
+
+  localStorage.getItem = function (key: string) {
+    if (key && key.startsWith('ethiolearn_') && 
+        !key.startsWith('ethiolearn_accounts') && 
+        !key.startsWith('ethiolearn_active_email') && 
+        !key.startsWith('ethiolearn_theme')) {
+      const activeEmail = originalGetItem.call(localStorage, 'ethiolearn_active_email');
+      if (activeEmail) {
+        const suffix = '_' + activeEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (!key.endsWith(suffix)) {
+          const userKey = key + suffix;
+          const value = originalGetItem.call(localStorage, userKey);
+          if (value === null) {
+            // Check legacy guest fallback and migrate if needed
+            const legacyValue = originalGetItem.call(localStorage, key);
+            if (legacyValue !== null) {
+              originalSetItem.call(localStorage, userKey, legacyValue);
+              return legacyValue;
+            }
+          }
+          return value;
+        }
+      }
+    }
+    return originalGetItem.apply(this, arguments as any);
+  };
+
+  localStorage.setItem = function (key: string, value: string) {
+    if (key && key.startsWith('ethiolearn_') && 
+        !key.startsWith('ethiolearn_accounts') && 
+        !key.startsWith('ethiolearn_active_email') && 
+        !key.startsWith('ethiolearn_theme')) {
+      const activeEmail = originalGetItem.call(localStorage, 'ethiolearn_active_email');
+      if (activeEmail) {
+        const suffix = '_' + activeEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (!key.endsWith(suffix)) {
+          const userKey = key + suffix;
+          return originalSetItem.call(localStorage, userKey, value);
+        }
+      }
+    }
+    return originalSetItem.apply(this, arguments as any);
+  };
+
+  localStorage.removeItem = function (key: string) {
+    if (key && key.startsWith('ethiolearn_') && 
+        !key.startsWith('ethiolearn_accounts') && 
+        !key.startsWith('ethiolearn_active_email') && 
+        !key.startsWith('ethiolearn_theme')) {
+      const activeEmail = originalGetItem.call(localStorage, 'ethiolearn_active_email');
+      if (activeEmail) {
+        const suffix = '_' + activeEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+        if (!key.endsWith(suffix)) {
+          const userKey = key + suffix;
+          return originalRemoveItem.call(localStorage, userKey);
+        }
+      }
+    }
+    return originalRemoveItem.apply(this, arguments as any);
+  };
+}
 
 export default function App() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -164,25 +236,45 @@ export default function App() {
     window.addEventListener('offline', handleOffline);
 
     // 2. Load Local Data with prefix 'ethiolearn_'
-    const storedProfile = localStorage.getItem('ethiolearn_profile');
-    const storedDecks = localStorage.getItem('ethiolearn_decks_state');
-    const storedNotes = localStorage.getItem('ethiolearn_custom_notes');
-    const storedStats = localStorage.getItem('ethiolearn_analytics');
+    const activeEmail = localStorage.getItem('ethiolearn_active_email');
+    const storedAccountsStr = localStorage.getItem('ethiolearn_accounts');
+    const hasAccounts = storedAccountsStr && JSON.parse(storedAccountsStr).length > 0;
+
+    let storedProfile = null;
+    let storedDecks = null;
+    let storedNotes = null;
+    let storedStats = null;
+
+    if (activeEmail || !hasAccounts) {
+      storedProfile = localStorage.getItem('ethiolearn_profile');
+      storedDecks = localStorage.getItem('ethiolearn_decks_state');
+      storedNotes = localStorage.getItem('ethiolearn_custom_notes');
+      storedStats = localStorage.getItem('ethiolearn_analytics');
+    }
 
     if (storedProfile) {
       setProfile(JSON.parse(storedProfile));
+    } else {
+      setProfile(null);
     }
+
     if (storedDecks) {
       setDecksState(JSON.parse(storedDecks));
+    } else {
+      setDecksState({});
     }
+
     if (storedNotes) {
       setCustomNotes(JSON.parse(storedNotes));
+    } else {
+      setCustomNotes([]);
     }
+
     if (storedStats) {
       const stats = JSON.parse(storedStats);
-      if (stats.studyHours) setTotalStudyHours(stats.studyHours);
-      if (stats.streak) setStreak(stats.streak);
-      if (stats.dailyGoal) setDailyHoursGoal(stats.dailyGoal);
+      if (stats.studyHours !== undefined) setTotalStudyHours(stats.studyHours);
+      if (stats.streak !== undefined) setStreak(stats.streak);
+      if (stats.dailyGoal !== undefined) setDailyHoursGoal(stats.dailyGoal);
     } else {
       // Create initial stats placeholder
       const initialStats = {
@@ -192,7 +284,12 @@ export default function App() {
         masteredCards: 48,
         examsDone: 4
       };
-      localStorage.setItem('ethiolearn_analytics', JSON.stringify(initialStats));
+      if (activeEmail || !hasAccounts) {
+        localStorage.setItem('ethiolearn_analytics', JSON.stringify(initialStats));
+      }
+      setTotalStudyHours(14.5);
+      setStreak(5);
+      setDailyHoursGoal(2);
     }
 
     setIsLoading(false);
@@ -218,12 +315,23 @@ export default function App() {
         }
       }
     };
+    const handleStatsSync = () => {
+      const storedStats = localStorage.getItem('ethiolearn_analytics');
+      if (storedStats) {
+        const stats = JSON.parse(storedStats);
+        if (stats.studyHours !== undefined) setTotalStudyHours(stats.studyHours);
+        if (stats.streak !== undefined) setStreak(stats.streak);
+        if (stats.dailyGoal !== undefined) setDailyHoursGoal(stats.dailyGoal);
+      }
+    };
+    window.addEventListener('ethiolearn_stats_updated', handleStatsSync);
     window.addEventListener('keydown', handleShortcuts);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('keydown', handleShortcuts);
+      window.removeEventListener('ethiolearn_stats_updated', handleStatsSync);
       if (unsubscribeAuth) unsubscribeAuth();
     };
   }, []);
@@ -236,15 +344,23 @@ export default function App() {
     playSuccessChime();
     showToast(`ሰላም, ${newProfile.name}! Welcome to EthioLearn Pro Campus.`);
     
-    // Establish initial streak increments
+    // Load custom decksState, notes, and stats for this logged-in account
     try {
-      const stats = JSON.parse(localStorage.getItem('ethiolearn_analytics') || '{}');
-      stats.streak = 5;
-      stats.studyHours = 14.5;
+      const savedDecks = localStorage.getItem('ethiolearn_decks_state');
+      setDecksState(savedDecks ? JSON.parse(savedDecks) : {});
+
+      const savedNotes = localStorage.getItem('ethiolearn_custom_notes');
+      setCustomNotes(savedNotes ? JSON.parse(savedNotes) : []);
+
+      const statsStr = localStorage.getItem('ethiolearn_analytics');
+      const stats = statsStr ? JSON.parse(statsStr) : {};
+      if (stats.studyHours === undefined) stats.studyHours = 14.5;
+      if (stats.streak === undefined) stats.streak = 5;
       stats.dailyGoal = newProfile.dailyGoalHours;
+      
       localStorage.setItem('ethiolearn_analytics', JSON.stringify(stats));
-      setStreak(5);
-      setTotalStudyHours(14.5);
+      setStreak(stats.streak);
+      setTotalStudyHours(stats.studyHours);
       setDailyHoursGoal(newProfile.dailyGoalHours);
     } catch (e) {}
   };
@@ -306,23 +422,175 @@ export default function App() {
 
   const handleExportDataAsJson = () => {
     playClickChime();
-    const data = {
-      profile,
-      streak,
-      totalStudyHours,
-      decksState,
-      customNotes,
-      metrics: localStorage.getItem('ethiolearn_analytics')
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `ethiolearn_campus_portfolio_${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (!profile) {
+      showToast("Create a profile configuration first.");
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Page border (gold)
+    doc.setDrawColor(200, 150, 46); // gold
+    doc.setLineWidth(0.5);
+    doc.rect(5, 5, 200, 287);
+
+    // Document header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(110, 110, 110);
+    doc.text("ETHIOLEARN STUDENT PORTAL - PORTFOLIO STUDY REPORT", 12, 12);
+    doc.text(`DATE GENERATED: ${new Date().toLocaleDateString()}`, 140, 12);
+
+    doc.setDrawColor(200, 150, 46);
+    doc.setLineWidth(1);
+    doc.line(10, 15, 200, 15);
+
+    // Main Title
+    doc.setTextColor(200, 150, 46);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("ACADEMIC PERFORMANCE PORTFOLIO", 12, 26);
+    doc.setFontSize(9);
+    doc.setTextColor(26, 122, 60);
+    doc.text("EthioLearn Pro 24/7 Digital Campus - Verified Student Document", 12, 31);
+
+    // Section 1: Demographic Student Profile Info
+    doc.setFillColor(242, 244, 248);
+    doc.rect(10, 36, 190, 24, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59); // deep slate
+    doc.text("STUDENT GENERAL PROFILE", 15, 42);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(`Student Name: ${profile.name || "Default EthioLearn Student"}`, 15, 48);
+    doc.text(`Grade Level: ${profile.grade || "Undergraduate Campus"}`, 15, 54);
+    doc.text(`Education System: ${profile.system || "Ministry of Secondary & Higher Education"}`, 105, 48);
+    doc.text(`Enrolled Subjects: ${profile.subjects?.length || 0} Core Subjects`, 105, 54);
+
+    // Section 2: Study Analytics Overview
+    doc.setFillColor(240, 253, 244); // light green
+    doc.rect(10, 66, 190, 34, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(21, 128, 61); // deep green
+    doc.text("LEARNING ANALYTICS TRACKER", 15, 72);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(40, 40, 40);
+    doc.text(`Active Study Streak: ${streak} Days Active`, 15, 79);
+    doc.text(`Total Study Hours Logged: ${totalStudyHours} Hours`, 15, 86);
+    doc.text(`Daily Goal Target: ${dailyHoursGoal} Hours/Day`, 15, 93);
+
+    // Flashcards analytics calculations
+    const deckCount = Object.keys(decksState || {}).length;
+    const totalCards = Object.values(decksState || {}).reduce((acc: number, curr) => acc + (Array.isArray(curr) ? curr.length : 0), 0) || 120;
+    const masteredCount = Object.values(decksState || {}).reduce((acc: number, curr) => acc + (Array.isArray(curr) ? curr.filter(c => c && c.repetition >= 3).length : 0), 0) || 48;
+
+    doc.text(`Study Decks Generated: ${deckCount} active flashcard chapters`, 105, 79);
+    doc.text(`Total Practice Cards: ${totalCards} compiled cards`, 105, 86);
+    doc.text(`Mastered Memory Level: ${masteredCount} high confidence cards`, 105, 93);
+
+    // Section 3: Flashcards Decks Details
+    let y = 108;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(200, 150, 46);
+    doc.text("DETAILED ACTIVE MEMORY DECKS", 12, y);
+    doc.line(12, y + 2, 80, y + 2);
+    y += 8;
+
+    const deckKeys = Object.keys(decksState || {});
+    if (deckKeys.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text("No active custom memory decks found. Practiced cards will display statistics here.", 12, y);
+      y += 8;
+    } else {
+      deckKeys.forEach(deckId => {
+        const cards = decksState[deckId] || [];
+        const mastered = cards.filter(c => c.repetition >= 3).length;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`Deck ID: ${deckId.replace('deck_', '').replace(/_/g, ' ').toUpperCase()}`, 15, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(`(${cards.length} cards matching, ${mastered} memorized successfully)`, 105, y);
+        y += 6;
+
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+          doc.setDrawColor(200, 150, 46);
+          doc.setLineWidth(0.5);
+          doc.rect(5, 5, 200, 287);
+        }
+      });
+    }
+
+    // Section 4: Notes & Summaries Compiled
+    y += 4;
+    if (y > 270) {
+      doc.addPage();
+      y = 20;
+      doc.setDrawColor(200, 150, 46);
+      doc.setLineWidth(0.5);
+      doc.rect(5, 5, 200, 287);
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(200, 150, 46);
+    doc.text("COMPILED NOTEBOOK SUMMARY INDEX", 12, y);
+    doc.line(12, y + 2, 80, y + 2);
+    y += 8;
+
+    if (customNotes.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text("No custom study notes compiled yet.", 12, y);
+      y += 8;
+    } else {
+      customNotes.forEach((note, index) => {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(30, 41, 59);
+        doc.text(`${index + 1}. [${note.subject || "GENERAL"}] ${note.title}`, 15, y);
+        y += 5;
+
+        // Strip HTML tags
+        const preview = note.content.replace(/<[^>]*>/g, '').substring(0, 150) + "...";
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 100, 100);
+        
+        const wrappedPreview = doc.splitTextToSize(preview, 175);
+        wrappedPreview.forEach((line: string) => {
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+            doc.setDrawColor(200, 150, 46);
+            doc.setLineWidth(0.5);
+            doc.rect(5, 5, 200, 287);
+          }
+          doc.text(line, 18, y);
+          y += 5;
+        });
+        y += 2;
+      });
+    }
+
+    doc.save(`ethiolearn_academic_portfolio_${Date.now()}.pdf`);
     playSuccessChime();
-    showToast("Learning profile backup downloaded!");
+    showToast("Academic Student Portfolio downloaded as a PDF successfully!");
   };
 
   if (isLoading) {
@@ -549,7 +817,9 @@ export default function App() {
           <button
             onClick={() => {
               playClickChime();
+              localStorage.removeItem('ethiolearn_active_email');
               setProfile(null);
+              showToast("Logged out of EthioLearn Pro successfully.");
             }}
             title="Switch User Log"
             className={`p-1 px-2.5 hover:bg-[#BE1931]/10 border hover:border-[#BE1931]/30 hover:text-[#BE1931] rounded-lg transition-colors cursor-pointer ${
@@ -1086,28 +1356,41 @@ export default function App() {
                   {/* support section */}
                   <div className="space-y-3 pt-3 border-t border-zinc-800/10">
                     <h4 className="font-serif font-bold text-sm text-emerald-500 flex items-center gap-2">
-                      <span>🤝</span> Student Support & Interactive Desk
+                      <span>🤝</span> Student Support & Interactive Desk (MON-SUN 24/7)
                     </h4>
                     <p className={isDark ? 'text-zinc-300' : 'text-slate-650'}>
-                      Need technical help, have subject curriculum complaints, or discovered incorrect answers generated by the AI tutor? We provide professional, dedicated channels for immediate resolution.
+                      Need technical help, have subject curriculum complaints, or want study assistance? Contact our dedicated support team directly 24/7.
                     </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#040816]/80 border-[#1E293B]' : 'bg-indigo-50/40 border-indigo-100'} flex items-start gap-2.5`}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#040816]/80 border-[#1E293B]' : 'bg-indigo-50/40 border-slate-200'} flex items-start gap-2.5`}>
                         <span className="text-lg">📧</span>
-                        <div>
-                          <span className="font-bold block text-[11px]">Direct Support Email</span>
-                          <a href="mailto:support@ethiolearn.org" className="text-sky-500 hover:underline font-mono text-[11px]">support@ethiolearn.org</a>
-                          <span className="block text-[9px] text-zinc-500 mt-0.5">Response Time: &lt; 12 hours</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-[11px]">Support Email</span>
+                          <a href="mailto:ezrat2116@gmail.com" className="text-sky-500 hover:underline font-mono text-[11px] block truncate" title="ezrat2116@gmail.com">ezrat2116@gmail.com</a>
+                          <span className="block text-[9px] text-zinc-500 mt-0.5">Response &lt; 30m</span>
                         </div>
                       </div>
 
-                      <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#040816]/80 border-[#1E293B]' : 'bg-indigo-50/40 border-indigo-100'} flex items-start gap-2.5`}>
+                      <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#040816]/80 border-[#1E293B]' : 'bg-indigo-50/40 border-slate-200'} flex items-start gap-2.5`}>
                         <span className="text-lg">📱</span>
-                        <div>
-                          <span className="font-bold block text-[11px]">Telegram Portal Bot</span>
-                          <a href="https://t.me/EthioLearnProSupportBot" target="_blank" rel="noreferrer" className="text-sky-500 hover:underline font-mono text-[11px]">@EthioLearnProSupportBot</a>
-                          <span className="block text-[9px] text-zinc-500 mt-0.5">Automated instant guides & tickets</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-[11px]">Telegram Support</span>
+                          <div className="flex flex-col gap-0.5 font-mono text-[11px]">
+                            <a href="https://t.me/ultra207" target="_blank" rel="noreferrer" className="text-sky-500 hover:underline block truncate">@ultra207</a>
+                            <a href="https://t.me/ethiopia_01" target="_blank" rel="noreferrer" className="text-sky-500 hover:underline block truncate">@ethiopia_01</a>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={`p-3 rounded-lg border ${isDark ? 'bg-[#040816]/80 border-[#1E293B]' : 'bg-indigo-50/40 border-slate-200'} flex items-start gap-2.5`}>
+                        <span className="text-lg">📞</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold block text-[11px]">Phone Support</span>
+                          <div className="flex flex-col gap-0.5 font-mono text-[11px] text-sky-500">
+                            <a href="tel:+251906046518" className="hover:underline block truncate">+251906046518</a>
+                            <a href="tel:+251966701315" className="hover:underline block truncate">+251966701315</a>
+                          </div>
                         </div>
                       </div>
                     </div>

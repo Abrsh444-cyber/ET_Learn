@@ -14,6 +14,18 @@ import { generateFlashcardsAI } from '../utils/ai';
 import { toGeezNumeral } from '../utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
 
+const FREE_SPACE_DECK: Deck = {
+  id: "deck_free_space",
+  title: "Free Space",
+  subject: "AI Generated",
+  cards: []
+};
+
+const ALL_DECKS = [
+  ...PREBUILT_DECKS,
+  FREE_SPACE_DECK
+];
+
 interface FlashcardsDeckProps {
   apiKey: string;
   decksState: { [deckId: string]: Flashcard[] };
@@ -45,10 +57,54 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
   const [aiTopic, setAiTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSuccess, setAiSuccess] = useState<string | null>(null);
+
+  // Manual custom card creation fields
+  const [showCreateCardModal, setShowCreateCardModal] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [newAnswer, setNewAnswer] = useState('');
+  const [newExplanation, setNewExplanation] = useState('');
+
+  const handleCreateCustomCard = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQuestion.trim() || !newAnswer.trim()) return;
+
+    const newCard: Flashcard = {
+      id: `manual_card_${Date.now()}`,
+      question: newQuestion.trim(),
+      answer: newAnswer.trim(),
+      explanation: newExplanation.trim() || "Manually created flashcard",
+      interval: 0,
+      repetition: 0,
+      easeFactor: 2.5,
+      dueDate: new Date().toISOString()
+    };
+
+    // Save exclusively in deck_free_space
+    const existingFreeSpaceCards = decksState["deck_free_space"] || [];
+    const finalCards = [newCard, ...existingFreeSpaceCards];
+
+    onSaveDecksState("deck_free_space", finalCards);
+
+    // Auto selection and success state presentation
+    setSelectedDeckId("deck_free_space");
+    
+    // Clear inputs and close modal
+    setNewQuestion('');
+    setNewAnswer('');
+    setNewExplanation('');
+    setShowCreateCardModal(false);
+    setAiSuccess("Custom study card added to Free Space successfully!");
+    
+    // Reset index to view the newly added card (index 0 because we prepend it)
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    playSuccessChime();
+  };
 
   useEffect(() => {
     // Find deck matching selected deck ID
-    const prebuiltDeck = PREBUILT_DECKS.find(d => d.id === selectedDeckId);
+    const prebuiltDeck = ALL_DECKS.find(d => d.id === selectedDeckId);
     if (!prebuiltDeck) return;
 
     // Load any user customized spaced-repetition progress from local container
@@ -180,6 +236,7 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
 
     setIsGenerating(true);
     setAiError(null);
+    setAiSuccess(null);
     playClickChime();
 
     try {
@@ -197,8 +254,17 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
           dueDate: new Date().toISOString()
         }));
 
-        const finalCards = [...newCards, ...activeDeck.cards];
-        onSaveDecksState(selectedDeckId, finalCards);
+        // Retrieve existing cards for Free Space instead of active prebuilt cards
+        const existingFreeSpaceCards = decksState["deck_free_space"] || [];
+        const finalCards = [...newCards, ...existingFreeSpaceCards];
+
+        // Save cards exclusively in deck_free_space
+        onSaveDecksState("deck_free_space", finalCards);
+
+        // Auto selection and success state presentation
+        setSelectedDeckId("deck_free_space");
+        setAiSuccess(`Synthesized ${generated.length} cards successfully! Added to your isolated 'Free Space' deck.`);
+        
         setAiTopic('');
         setCurrentIndex(0);
         setIsFlipped(false);
@@ -226,14 +292,28 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
         
         {/* Decks Selection Sidebar */}
         <div className="bg-[#161616] p-4 rounded-xl border border-[#2A2A2A] space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-[#2A2A2A]">
-            <Layers className="w-5 h-5 text-[#C8962E]" />
-            <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">Select Study Deck</h3>
+          <div className="flex items-center justify-between pb-3 border-b border-[#2A2A2A]">
+            <div className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#C8962E]" />
+              <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">Select Study Deck</h3>
+            </div>
+            {/* Added elegant + button for adding manually generated cards */}
+            <button
+              onClick={() => {
+                setShowCreateCardModal(true);
+                playClickChime();
+              }}
+              className="w-7 h-7 rounded-lg bg-[#C8962E]/10 border border-[#C8962E]/20 text-[#C8962E] hover:bg-[#C8962E]/25 hover:border-[#C8962E] transition-all text-base font-bold flex items-center justify-center cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+              title="Add Custom Card (+)"
+            >
+              +
+            </button>
           </div>
 
           <div className="space-y-2">
-            {PREBUILT_DECKS.map((d) => {
-              const count = d.cards.length;
+            {ALL_DECKS.map((d) => {
+              const savedStateCards = decksState[d.id];
+              const count = savedStateCards ? savedStateCards.length : d.cards.length;
               const isSelected = selectedDeckId === d.id;
               
               return (
@@ -259,6 +339,18 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
                 </button>
               );
             })}
+
+            {/* Quick manual custom + cards button inside selection sidebar */}
+            <button
+              onClick={() => {
+                setShowCreateCardModal(true);
+                playClickChime();
+              }}
+              className="w-full text-center p-3 rounded-lg border border-dashed border-[#C8962E]/30 hover:border-[#C8962E] text-xs cursor-pointer flex justify-center items-center gap-2 transition-all bg-[#C8962E]/5 hover:bg-[#C8962E]/10 font-bold text-[#C8962E]"
+            >
+              <span className="text-sm font-black">+</span>
+              <span>Create Custom Card</span>
+            </button>
           </div>
 
           {/* Cultual Numeral Translation Feature Toggle */}
@@ -487,9 +579,7 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
           )}
 
         </div>
-      </div>
-
-      {/* OpenRouter AI generator subview (type topic to generate 10 more flashcards) */}
+        {/* OpenRouter AI generator subview (type topic to generate 10 more flashcards) */}
       <div className="bg-[#161616] p-5 rounded-xl border border-[#2A2A2A] mt-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-5 opacity-5">
           <Sparkles className="w-32 h-32 text-[#C8962E]" />
@@ -502,11 +592,14 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
           </div>
           <h4 className="font-serif text-[#F0EDE8] text-base font-bold mb-1">Generate Instant Cards with OpenRouter</h4>
           <p className="text-xs text-zinc-500 leading-normal mb-4">
-            Type out any subtopic or chapter title from your university handbook. OpenRouter will automatically write 10 high-fidelity study question card pairs and append them to your active desk review state.
+            Type out any subtopic or chapter title from your university handbook. OpenRouter will automatically write 10 high-fidelity study question card pairs and append them to your active deck review state.
           </p>
 
           {aiError && (
             <p className="text-xs text-red-400 bg-red-950/20 border border-red-500/20 p-2.5 rounded-lg mb-3">{aiError}</p>
+          )}
+          {aiSuccess && (
+            <p className="text-xs text-emerald-400 bg-emerald-950/20 border border-emerald-500/20 p-2.5 rounded-lg mb-3">{aiSuccess}</p>
           )}
 
           <form onSubmit={handleGenerateCardsAI} className="flex gap-2 text-xs">
@@ -528,6 +621,108 @@ export default function FlashcardsDeck({ apiKey, decksState, onSaveDecksState }:
           </form>
         </div>
       </div>
+
+      {/* Create Custom Flashcard Modal Overlay */}
+      <AnimatePresence>
+        {showCreateCardModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { playClickChime(); setShowCreateCardModal(false); }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+
+            {/* Dialog Card Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ type: "spring", duration: 0.4 }}
+              className="relative w-full max-w-lg rounded-2xl border border-blue-900/40 bg-[#0B1229] p-6 text-slate-100 shadow-2xl z-10 max-h-[90vh] flex flex-col justify-between"
+            >
+              <form onSubmit={handleCreateCustomCard} className="space-y-4">
+                {/* Header */}
+                <div className="flex justify-between items-center pb-3 border-b border-zinc-800/40">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 bg-[#C8962E]/10 border border-[#C8962E]/30 text-[#C8962E] rounded-lg text-lg font-bold">
+                      +
+                    </span>
+                    <div>
+                      <h3 className="font-serif text-sm font-bold text-white">Create New Custom Card</h3>
+                      <p className="text-[10px] text-[#C8962E] tracking-tight uppercase">Saved strictly to Free Space Deck</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setShowCreateCardModal(false); }}
+                    className="text-zinc-400 hover:text-white transition-all cursor-pointer text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Form fields */}
+                <div className="space-y-3.5 text-xs">
+                  <div className="space-y-1">
+                    <label className="block font-medium text-zinc-300">Front Side: Question *</label>
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="e.g. What is the complexity of binary search?"
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg p-2.5 outline-none text-[#F0EDE8] focus:border-[#C8962E] resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block font-medium text-zinc-300">Back Side: Correct Answer *</label>
+                    <textarea
+                      required
+                      rows={2}
+                      placeholder="e.g. O(log n)"
+                      value={newAnswer}
+                      onChange={(e) => setNewAnswer(e.target.value)}
+                      className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg p-2.5 outline-none text-[#F0EDE8] focus:border-[#C8962E] resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block font-medium text-zinc-300">Detailed Explanation (Optional)</label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Because the search space is cut in half on each step iteration."
+                      value={newExplanation}
+                      onChange={(e) => setNewExplanation(e.target.value)}
+                      className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg p-2.5 outline-none text-[#F0EDE8] focus:border-[#C8962E] resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="pt-3 border-t border-zinc-800/40 flex justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setShowCreateCardModal(false); }}
+                    className="px-4 py-2 bg-zinc-905 border border-zinc-900 hover:bg-zinc-800 text-zinc-400 rounded-lg text-[11px] font-bold cursor-pointer transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gradient-to-r from-[#C8962E] to-[#1A7A3C] text-black hover:opacity-90 font-black rounded-lg text-[11px] cursor-pointer transition-all uppercase tracking-wider"
+                  >
+                    Generate Card
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>      </div>
 
     </div>
   );
