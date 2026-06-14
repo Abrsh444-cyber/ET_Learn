@@ -109,6 +109,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'tutor' | 'flashcards' | 'exam' | 'notes' | 'analytics' | 'settings' | 'mindlax'>('dashboard');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ethiolearnpro.netlify.app';
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -1816,7 +1817,7 @@ export default function App() {
                       <ol className="list-decimal list-inside space-y-1 text-[10px] text-zinc-400 border-t border-[#222] pt-2 block pl-0.5">
                         <li className="leading-snug">
                           Copy your live web application URL:<br/>
-                          <code className="text-[#C8962E] select-all break-all font-mono">https://ais-pre-tl2qjbl3mf3wzgihvfexfg-14765837278.europe-west2.run.app</code>
+                          <code className="text-[#C8962E] select-all break-all font-mono">{appUrl}</code>
                         </li>
                         <li className="leading-snug">
                           Go to <a href="https://www.pwabuilder.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 font-bold hover:underline">PWABuilder.com</a> and paste the application URL.
