@@ -19,6 +19,7 @@ import ExamPrep from './components/ExamPrep';
 import StudyNotesView from './components/StudyNotesView';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import MindRelax from './components/MindRelax';
+import PWADownloadAssistant from './components/PWADownloadAssistant';
 import EthioLearnLogo from './components/EthioLearnLogo';
 import StudentAvatar from './components/StudentAvatar';
 import StudentAvatarSelector from './components/StudentAvatarSelector';
@@ -1459,6 +1460,13 @@ export default function App() {
 
                 </div>
 
+                {/* Mobile PWA Download Assistant */}
+                <PWADownloadAssistant 
+                  isInstallable={isInstallable} 
+                  triggerPWAInstall={triggerPWAInstall}
+                  isOffline={isOffline}
+                />
+
                  {/* Subject progress grids meters and Alarms hub */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Curriculum Progression takes 2 cols */}
@@ -1777,30 +1785,11 @@ export default function App() {
                     </div>
 
                     {/* Quick Native Installation Bar */}
-                    <div className="bg-[#151515] p-3 rounded-xl border border-zinc-900 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] uppercase font-black text-zinc-400 tracking-wide">
-                          📱 Native Device Installation
-                        </span>
-                        <span className="bg-purple-950/30 text-purple-400 border border-purple-500/20 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold">
-                          Standalone Shell
-                        </span>
-                      </div>
-
-                      {isInstallable ? (
-                        <button
-                          type="button"
-                          onClick={triggerPWAInstall}
-                          className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-[#1A7A3C] hover:opacity-90 text-white font-extrabold rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-emerald-950/20"
-                        >
-                          📥 Install EthioLearn on Home Screen
-                        </button>
-                      ) : (
-                        <div className="p-2.5 bg-zinc-900/40 rounded-lg text-[10.5px] text-zinc-400 border border-zinc-900/60 leading-relaxed font-sans">
-                          ✨ **Ready to Install:** Simply tap <span className="text-white font-bold">"Add to Home Screen"</span> or click the install icon in your browser's address bar to install this app as a standalone lightweight native app on Android, iOS, or Desktop.
-                        </div>
-                      )}
-                    </div>
+                    <PWADownloadAssistant 
+                      isInstallable={isInstallable} 
+                      triggerPWAInstall={triggerPWAInstall}
+                      isOffline={isOffline}
+                    />
 
                     {/* Portable Companion Export */}
                     <div className="space-y-1.5">
