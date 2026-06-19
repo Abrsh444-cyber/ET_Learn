@@ -20,6 +20,7 @@ import StudentProfileView from './components/StudentProfileView';
 import BookStoreView from './components/BookStoreView';
 import UniversityExamsView from './components/UniversityExamsView';
 import UpgradeProView from './components/UpgradeProView';
+import EthioLearnLogo from './components/EthioLearnLogo';
 
 import { getEthiopianDate } from './utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from './utils/audio';
@@ -428,9 +429,7 @@ export default function App() {
           
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-[#078930] flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0 animate-pulse">
-                E
-              </div>
+              <EthioLearnLogo size={42} showCardBackground={true} className="hover:rotate-6 duration-300 transition-all shrink-0" />
               <div className="leading-none text-left">
                 <div className="flex items-center">
                   <span className="font-serif font-black text-slate-900 dark:text-white text-lg tracking-tight">EthioLearn</span>
