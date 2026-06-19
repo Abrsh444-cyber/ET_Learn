@@ -14,6 +14,16 @@ export interface StudentProfile {
   theme: 'dark' | 'light' | 'auto';
   language: 'en' | 'am' | 'both';
   avatar?: string; // Preset name or Base64 string of student photo
+  phone?: string;
+  isRegistered?: boolean;
+  unregisteredAICredits?: number;
+  // Premium subscription details
+  isPro?: boolean;
+  proStatus?: 'none' | 'trial' | 'pending' | 'active';
+  proPaymentTxn?: string;
+  proPaymentDate?: string;
+  senderName?: string;
+  proPaymentPhone?: string;
 }
 
 export interface Flashcard {

@@ -6,8 +6,9 @@
 // A high-fidelity Gregorian to Ethiopian Calendar Converter
 // Reference points are adjusted for modern years (2020-2030)
 export function getEthiopianDate(date: Date): { day: number; monthName: string; year: number; monthIndex: number; formatted: string } {
+  // Extract local date fields
   const gYear = date.getFullYear();
-  const gMonth = date.getMonth(); // 0-11
+  const gMonth = date.getMonth();
   const gDay = date.getDate();
 
   const ethMonths = [
@@ -26,58 +27,31 @@ export function getEthiopianDate(date: Date): { day: number; monthName: string; 
     "ጳጉሜ"    // Pagume (13) - Sep (Short month)
   ];
 
-  // Let's calculate the julian day to get exact mapping
-  const utc = Date.UTC(gYear, gMonth, gDay);
-  const msPerDay = 24 * 60 * 60 * 1000;
-  
-  // Reference: Sept 11, 2023 is Meskerem 1, 2016
-  const refUtc = Date.UTC(2023, 8, 11); // Month 8 is September
-  const diffDays = Math.floor((utc - refUtc) / msPerDay);
+  // In the modern era (1900-2100), Ethiopian New Year (Meskerem 1) falls on Sep 12 if the previous Gregorian year % 4 === 3. Otherwise, it falls on Sep 11.
+  const isPrecursor = (gYear % 4 === 3);
+  const meskerem1 = new Date(gYear, 8, isPrecursor ? 12 : 11);
 
-  // Offset-based calculation from Meskerem 1, 2016
-  let totalEthDays = 2016 * 365 + Math.floor(2016 / 4) + diffDays;
-  
-  // Now extract Year, Month, Day in Ethiopian Calendar
-  // Every 4th year is leap year in Ethiopian Calendar (e.g. 2015, 2019, 2023... are leap years preceding Gregorian leaps)
-  // Let we find Year
-  let ethYear = Math.floor((4 * totalEthDays + 3) / 1461);
-  let leapOffset = Math.floor(ethYear / 4);
-  let remainingDays = totalEthDays - (ethYear * 365 + leapOffset);
+  // Use uniform local dates to calculate exact elapsed day count, bypassing timezone shifts
+  const currentLocalDate = new Date(gYear, gMonth, gDay);
 
-  if (remainingDays < 0) {
-    ethYear--;
-    leapOffset = Math.floor(ethYear / 4);
-    remainingDays = totalEthDays - (ethYear * 365 + leapOffset);
+  let ethYear = 2000;
+  let diffDays = 0;
+
+  if (currentLocalDate.getTime() >= meskerem1.getTime()) {
+    ethYear = gYear - 7;
+    diffDays = Math.round((currentLocalDate.getTime() - meskerem1.getTime()) / (24 * 60 * 60 * 1000));
+  } else {
+    ethYear = gYear - 8;
+    const prevYear = gYear - 1;
+    const prevIsPrecursor = (prevYear % 4 === 3);
+    const prevMeskerem1 = new Date(prevYear, 8, prevIsPrecursor ? 12 : 11);
+    diffDays = Math.round((currentLocalDate.getTime() - prevMeskerem1.getTime()) / (24 * 60 * 60 * 1000));
   }
 
-  let ethMonthIndex = 0;
-  let ethDay = 0;
+  const ethMonthIndex = Math.floor(diffDays / 30);
+  const ethDay = (diffDays % 30) + 1;
+  const monthName = ethMonths[ethMonthIndex] || "ጳጉሜ";
 
-  // Let's map standard months of 30 days and Pagume of 5 or 6 days
-  const isLeap = (ethYear % 4 === 3); // Ethiopian leap year
-  const pagumeDays = isLeap ? 6 : 5;
-
-  for (let i = 0; i < 12; i++) {
-    if (remainingDays < 30) {
-      ethMonthIndex = i;
-      ethDay = remainingDays + 1;
-      break;
-    }
-    remainingDays -= 30;
-  }
-
-  // If we iterated 12 months and still have days, it's Pagume
-  if (remainingDays >= 0 && remainingDays < pagumeDays && ethDay === 0) {
-    ethMonthIndex = 12;
-    ethDay = remainingDays + 1;
-  } else if (remainingDays >= pagumeDays && ethDay === 0) {
-    // Edge correction wrap to next year
-    ethYear++;
-    ethMonthIndex = 0;
-    ethDay = 1;
-  }
-
-  const monthName = ethMonths[ethMonthIndex];
   return {
     day: ethDay,
     monthName,

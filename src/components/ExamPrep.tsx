@@ -1,196 +1,220 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  FileText, Clock, HelpCircle, AlertTriangle, Sparkles, Trophy, ListChecks, Calendar, Compass, ArrowRight, Zap, RefreshCw, Bookmark
+  Compass, Trophy, Zap, Clock, Calendar, ArrowRight, Sparkles, FileText, CheckCircle, XCircle, HelpCircle, Award, RefreshCw
 } from 'lucide-react';
-import { generateQuizAI, submitClaudeChat, ChatMessage } from '../utils/ai';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
+import { generateQuizAI, submitClaudeChat, ChatMessage } from '../utils/ai';
 
 interface ExamPrepProps {
   apiKey: string;
   enrolledSubjects: string[];
+  onStudyAction?: () => void;
 }
 
-export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+}
+
+const PAST_EXAM_BANK: { [subject: string]: QuizQuestion[] } = {
+  "Emerging Technologies": [
+    {
+      question: "Which technology acts as the underlying fabric enabling the secure decentralization of cryptocurrencies without middlemen?",
+      options: ["Centralized cloud clusters", "Blockchain distributed ledgers", "Quantum supercomputing", "Edge mesh nodes"],
+      correctAnswer: "Blockchain distributed ledgers",
+      explanation: "Blockchain technology employs decentralized consensus mechanisms (like Proof of Work/Stake) to secure accounting books without trusting central banks or middlemen."
+    },
+    {
+      question: "What is the primary operational advantage of implementing Edge Computing in remote industrial networks?",
+      options: ["Massive cloud data-center compilation", "Reduced latency by processing closer to host devices", "Infinitely high energy consumption profiles", "Lower overall cryptography overhead"],
+      correctAnswer: "Reduced latency by processing closer to host devices",
+      explanation: "Edge processing handles immediate data local to the collection node, cutting transmission latency to remote servers and saving network bandwidth."
+    }
+  ],
+  "Introduction to Economics": [
+    {
+      question: "Which state of a typical free market represents the stable price-point where consumer demand perfectly equals producer supply?",
+      options: ["Systemic inflation", "Equilibrium price level", "Economic stagnation", "Mercantile deficit"],
+      correctAnswer: "Equilibrium price level",
+      explanation: "Market equilibrium occurs at the intersection of supply and demand curves. No supply surplus or demand deficit forces price adjustments."
+    },
+    {
+      question: "What unique Giffen Good feature violates the fundamental 'Law of Demand' in microeconomics?",
+      options: ["An increase in price leads to an increase in demand", "Demand falls to zero immediately upon price adjustments", "Producers refuse to supply items below premium limits", "The substitution effect eclipses real-income restrictions"],
+      correctAnswer: "An increase in price leads to an increase in demand",
+      explanation: "For highly essential inferior foods like staple grains in low-income populations, a high price reduces disposable cash, forcing families to buy more basic grains instead of expensive meats."
+    }
+  ],
+  "General Biology": [
+    {
+      question: "What primary chemical organelle hosts the aerobic Krebs (Citric Acid) Cycle within organic eukaryotic cells?",
+      options: ["Cytosolic ribosomes", "The inner mitochondria matrix", "Nucleolar envelope membranes", "Lysosome digestion bubbles"],
+      correctAnswer: "The inner mitochondria matrix",
+      explanation: "While glycolysis happens in the cytosol, the Citric Acid Cycle occurs inside the mitochondrial matrix to synthesize NADH, FADH2, and ATP precursors."
+    },
+    {
+      question: "Which cellular cycle phase copies genetic chromatid structures to prepare cells for real mitosis division?",
+      options: ["G0 stagnant resting stage", "S (Synthesis) phase of Interphase", "Prophase spindle convergence", "Telophase cytokinetics split"],
+      correctAnswer: "S (Synthesis) phase of Interphase",
+      explanation: "DNA replication is completed in the S-Phase (Synthesis Phase) of the cell cycle, ensuring each resulting daughter cell gets a perfect genome duplicate."
+    }
+  ],
+  "Communicative English": [
+    {
+      question: "Choose the correct indirect reported statement for: \"I am studying biology tonight,\" said Almaz.",
+      options: [
+        "Almaz said she is studying biology tonight.",
+        "Almaz said she was studying biology that night.",
+        "Almaz said I had been studying biology tonight.",
+        "Almaz says she studied biology that night."
+      ],
+      correctAnswer: "Almaz said she was studying biology that night.",
+      explanation: "When reporting speech, present continuous shifts to past continuous ('am studying' -> 'was studying'), and time phrases shift ('tonight' -> 'that night')."
+    }
+  ],
+  "Moral and Civic Education": [
+    {
+      question: "Which founding document governs the modern federal structure and human rights standards of the Federal Democratic Republic of Ethiopia?",
+      options: ["The 1931 imperial decree", "The 1987 Derg legal template", "The 1995 FDRE Constitution", "The Fetha Nagast historical code"],
+      correctAnswer: "The 1995 FDRE Constitution",
+      explanation: "The 1995 Constitution of the FDRE established the current ethnic-based federal structure, decentralized administrative powers, and coded core democratic rights."
+    }
+  ]
+};
+
+export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: ExamPrepProps) {
   const [selectedSubject, setSelectedSubject] = useState(enrolledSubjects[0] || "Emerging Technologies");
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [qCount, setQCount] = useState<number>(5);
-  const [examDate, setExamDate] = useState('2026-07-15');
-  const [countdownText, setCountdownText] = useState('');
 
-  // Exam Active States
-  const [examMode, setExamMode] = useState<'setup' | 'active' | 'results' | 'revision' | 'past_exams'>('setup');
-  const [examQuestions, setExamQuestions] = useState<any[]>([]);
-  const [activeQIndex, setActiveQIndex] = useState(0);
+  // Load language settings from localStorage
+  const [language, setLanguage] = useState<'en' | 'am'>(() => {
+    const saved = localStorage.getItem('ethiolearn_language_preference');
+    return (saved === 'am' || saved === 'en') ? saved : 'en';
+  });
+
+  const [examMode, setExamMode] = useState<'setup' | 'active' | 'results'>('setup');
+  const [examQuestions, setExamQuestions] = useState<QuizQuestion[]>([]);
+  const [activeQIndex, setActiveQIndex] = useState<number>(0);
+  
+  // Quiz evaluation states
   const [userSelections, setUserSelections] = useState<{ [qIndex: number]: string }>({});
-  const [timeRemaining, setTimeRemaining] = useState(60); // 60s per question
-  const [loadingText, setLoadingText] = useState<string | null>(null);
+  const [isAnswerRevealed, setIsAnswerRevealed] = useState<boolean>(false);
+  
+  const [examScore, setExamScore] = useState<number>(0);
+  const [examGrade, setExamGrade] = useState<'A' | 'B' | 'C' | 'D' | 'F'>('F');
+  const [pastSessions, setPastSessions] = useState<any[]>(() => {
+    try {
+      const stored = localStorage.getItem("ethiolearn_exam_sessions_history");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
-  // Stats / Results
-  const [examScore, setExamScore] = useState(0);
+  const [loadingText, setLoadingText] = useState<string | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<number>(60);
   const [particles, setParticles] = useState<{ id: number; left: number; top: number; color: string; duration: number; size: number }[]>([]);
 
+  // Revision tool
+  const [revisionTopic, setRevisionTopic] = useState('');
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [revisionOutput, setRevisionOutput] = useState('');
+
+  const examTimerRef = useRef<any>(null);
+
+  // Sync language with state changes
+  useEffect(() => {
+    const handleLangChange = () => {
+      const saved = localStorage.getItem('ethiolearn_language_preference');
+      if (saved === 'am' || saved === 'en') {
+        setLanguage(saved);
+      }
+    };
+    window.addEventListener('storage', handleLangChange);
+    // Interval check for in-app page transfers
+    const interval = setInterval(handleLangChange, 1000);
+    return () => {
+      window.removeEventListener('storage', handleLangChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   const triggerDopaminePop = () => {
-    const colors = ['#C8962E', '#1A7A3C', '#BE1931', '#FFD700', '#1D4ED8'];
-    const newList = Array.from({ length: 35 }).map((_, i) => ({
+    const colors = ['#078930', '#FCDD09', '#BE1931', '#2563EB', '#8B5CF6'];
+    const newList = Array.from({ length: 30 }).map((_, i) => ({
       id: Date.now() + i,
       left: Math.random() * 85 + 5,
       top: Math.random() * 30 + 40,
       color: colors[i % colors.length],
       duration: 0.8 + Math.random() * 0.7,
-      size: 6 + Math.random() * 7
+      size: 5 + Math.random() * 7
     }));
     setParticles(newList);
     setTimeout(() => setParticles([]), 2200);
   };
-  const [examGrade, setExamGrade] = useState<'A' | 'B' | 'C' | 'D' | 'F'>('F');
-  const [pastSessions, setPastSessions] = useState<any[]>([]);
-
-  // 5-minute revision notes State
-  const [revisionTopic, setRevisionTopic] = useState('');
-  const [revisionOutput, setRevisionOutput] = useState('');
-  const [isSummarizing, setIsSummarizing] = useState(false);
-
-  const countdownIntervalRef = useRef<any>(null);
-  const examTimerRef = useRef<any>(null);
-
-  // Past Exam Hardcoded Question Bank (10 high-quality questions per subject!)
-  const PAST_EXAM_BANK: { [subject: string]: any[] } = {
-    "Emerging Technologies": [
-      {
-        question: "Which pattern properly describes the transmission structure of central IoT telemetry stream nodes?",
-        options: ["Data flow starts from physical perception sensors to connectivity routing gateways", "Nodes bypass edge routers and communicate exclusively with central server clusters", "Perception nodes store all inputs locally in internal buffers until manual trigger", "Transmission occurs via copper-grid ethernet networks in major urban layouts"],
-        correctAnswer: "Data flow starts from physical perception sensors to connectivity routing gateways",
-        explanation: "IoT architecture begins at the perception layer, which streams variables to gateways for upward connectivity routing."
-      },
-      {
-        question: "Which of the following describes the key difference between Artificial Intelligence (AI) and Machine Learning (ML)?",
-        options: ["ML is a specific subset of AI focused on learning from data patterns", "AI is a specific hardware level while ML acts as a software engine only", "ML can compile logic without running any form of underlying algorithm", "AI requires neural networks while ML bypasses multi-layer processing"],
-        correctAnswer: "ML is a specific subset of AI focused on learning from data patterns",
-        explanation: "Machine Learning is the actual mathematical methodology used to achieve the wider, macro goals of AI."
-      },
-      {
-        question: "What primary encryption mechanic guarantees trustless operations inside a distributed Blockchain ledger?",
-        options: ["Asymmetric cryptography and decentralized miners validation hashes", "Central registry verification keys on cloud database centers", "Manual clearance of block allocations by federal network operators", "Symmetric encryption keys distributed via SMS messages"],
-        correctAnswer: "Asymmetric cryptography and decentralized miners validation hashes",
-        explanation: "Blockchain relies on public-key private-key structures and cryptographic consensus mechanisms (like PoW or PoS) to achieve tamper-proof decentralization."
-      }
-    ],
-    "Introduction to Economics": [
-      {
-        question: "Ceteris paribus, when a government imposes a binding price ceiling below the market equilibrium level, what is the immediate economic effect?",
-        options: ["A persistent shortage as demand exceeds available supply", "A massive surplus as suppliers dump inventory", "An instantaneous drop in buyer demand schedules", "Perfect market clearance with stabilized high wages"],
-        correctAnswer: "A persistent shortage as demand exceeds available supply",
-        explanation: "A price ceiling set below equilibrium makes products cheap, driving up demand while making it unprofitable for suppliers, creating shortages."
-      },
-      {
-        question: "Which central bank operation is typically deployed in Ethiopia to combat accelerating demand-pull inflation?",
-        options: ["Increasing domestic interest rates and raising reserve requirements of commercial banks", "Slashing reserve ratios of state-owned commercial entities", "Increasing government expenditure on major luxury grids", "Printing higher paper currencies to expand domestic circulation"],
-        correctAnswer: "Increasing domestic interest rates and raising reserve requirements of commercial banks",
-        explanation: "Tight monetary policy (raising rates, increasing reserves) reduces liquidity in the economy, lowering aggregate demand to dampen inflation."
-      }
-    ],
-    "General Biology": [
-      {
-        question: "In plants, what molecular process takes place inside the stroma of chloroplasts during light-independent reactions?",
-        options: ["Fixing CO2 molecules using ATP and NADPH in the Calvin Cycle to synthesize sugars", "Splitting H2O molecules releasing free oxygen via photo-excitation", "Synthesizing ATP using proton gradients across the thylakoid membranes", "Decomposing starch molecules into active cellular waste"],
-        correctAnswer: "Fixing CO2 molecules using ATP and NADPH in the Calvin Cycle to synthesize sugars",
-        explanation: "The stroma hosts the Calvin Cycle, leveraging the organic batteries (ATP and NADPH) made in the thylakoids to store energy as glucose."
-      }
-    ],
-    "Communicative English": [
-      {
-        question: "Select the sentence that properly transforms the statement 'I have rewritten the essay' into passive reported speech.",
-        options: ["She said that the essay had been rewritten by her.", "She said she has rewritten the essay.", "She states that the essay was rewritten.", "She had reported rewriting the essay yesterday."],
-        correctAnswer: "She said that the essay had been rewritten by her.",
-        explanation: "Reported speech shifts Present Perfect to Past Perfect; passive conversion routes 'has rewritten' into 'had been rewritten'."
-      }
-    ],
-    "Moral and Civic Education": [
-      {
-        question: "Under Article 8 of the 1995 Ethiopian Constitution, where does ultimate sovereign power reside?",
-        options: ["In the Nations, Nationalities and Peoples of Ethiopia", "In the office of the Prime Minister and active cabinet Ministers", "In the Supreme Federal Judicial Court assembly room", "In the capital municipality administration committees"],
-        correctAnswer: "In the Nations, Nationalities and Peoples of Ethiopia",
-        explanation: "Article 8 explicitly states: 'All sovereign power resides in the Nations, Nationalities and Peoples of Ethiopia'."
-      }
-    ]
-  };
-
-  useEffect(() => {
-    // Calculative countdown timer to exam date
-    const updateCountdown = () => {
-      const target = new Date(examDate).getTime();
-      const now = new Date().getTime();
-      const diff = target - now;
-
-      if (diff <= 0) {
-        setCountdownText("Exam Date Has Concluded!");
-        return;
-      }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      setCountdownText(`${days}d ${hours}h until National Examinations`);
-    };
-
-    updateCountdown();
-    countdownIntervalRef.current = setInterval(updateCountdown, 60000);
-
-    // Load custom exam logs history
-    const saved = localStorage.getItem("ethiolearn_exam_sessions_history");
-    if (saved) {
-      setPastSessions(JSON.parse(saved));
-    }
-
-    return () => {
-      clearInterval(countdownIntervalRef.current);
-      clearInterval(examTimerRef.current);
-    };
-  }, [examDate]);
 
   const handleStartPastExam = () => {
+    const bank = PAST_EXAM_BANK[selectedSubject];
+    if (!bank || bank.length === 0) {
+      setLoadingText(
+        language === 'en' 
+          ? "No hand-verified past papers available for this grade yet. We will generate questions with AI!" 
+          : "በዚህ የትምህርት ምርጫ የተዘጋጀ ፈተና የለም። በአይ እናዘጋጅልዎታለን!"
+      );
+      playFailureChime();
+      setTimeout(() => {
+        setLoadingText(null);
+        handleGenerateMockAI();
+      }, 2500);
+      return;
+    }
+
     playClickChime();
-    const bank = PAST_EXAM_BANK[selectedSubject] || PAST_EXAM_BANK["Emerging Technologies"];
     setExamQuestions(bank);
     setExamMode('active');
     setActiveQIndex(0);
     setUserSelections({});
-    setTimeRemaining(90); // 90 seconds for real past exam items
+    setIsAnswerRevealed(false);
+    setTimeRemaining(90);
     startQuestionTimer(90);
   };
 
   const handleGenerateMockAI = async () => {
-    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
-
-    setLoadingText(`Contacting AI to formulate a comprehensive ${difficulty} mock exam for you...`);
+    setLoadingText(
+      language === 'en'
+        ? `Contacting AI to formulate a customized ${difficulty} quiz for you...`
+        : `አይ መምህር የፈተና ጥያቄዎችን እያዘጋጀ ነው...`
+    );
     playClickChime();
 
     try {
-      // Create specific parameters: Topic is derived based on subject
-      const topic = `comprehensive curriculum of ${selectedSubject} at ${difficulty} standard containing exactly ${qCount} questions`;
+      const topic = `curriculum of ${selectedSubject} of grade high standards containing exactly ${qCount} multiple choice questions`;
       const questions = await generateQuizAI(topic, selectedSubject, apiKey);
       if (questions && questions.length > 0) {
-        // Truncate/extend depending on selection
         setExamQuestions(questions.slice(0, qCount));
         setExamMode('active');
         setActiveQIndex(0);
         setUserSelections({});
+        setIsAnswerRevealed(false);
         setLoadingText(null);
         setTimeRemaining(60);
         startQuestionTimer(60);
         playSuccessChime();
       } else {
-        throw new Error("Unable to formulate questions. Please try again.");
+        throw new Error("Unable to formulate quiz questions. Please try again.");
       }
     } catch (err: any) {
-      setLoadingText(`AI Mock design failed: ${err.message || err}`);
+      setLoadingText(
+        language === 'en'
+          ? `AI creation failed: ${err.message || err}`
+          : `የአይ ዝግጅት አልተሳካም፡ ${err.message || err}`
+      );
       playFailureChime();
-      setTimeout(() => setLoadingText(null), 4050);
+      setTimeout(() => setLoadingText(null), 4000);
     }
   };
 
@@ -200,9 +224,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
     examTimerRef.current = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Time expired for this question, advance or complete
           clearInterval(examTimerRef.current);
-          handleNextQuestion();
           return 0;
         }
         return prev - 1;
@@ -210,29 +232,42 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
     }, 1000);
   };
 
+  const handleOptionSelect = (option: string) => {
+    if (isAnswerRevealed) return; // Answer locked
+
+    setUserSelections(prev => ({ ...prev, [activeQIndex]: option }));
+    setIsAnswerRevealed(true);
+    clearInterval(examTimerRef.current);
+
+    const question = examQuestions[activeQIndex];
+    if (option === question.correctAnswer) {
+      playSuccessChime();
+      triggerDopaminePop();
+    } else {
+      playFailureChime();
+    }
+    onStudyAction?.();
+  };
+
   const handleNextQuestion = () => {
     playClickChime();
+    setIsAnswerRevealed(false);
+    
     if (activeQIndex < examQuestions.length - 1) {
       setActiveQIndex(activeQIndex + 1);
-      const seconds = examMode === 'past_exams' ? 90 : 60;
+      const seconds = 60;
       startQuestionTimer(seconds);
     } else {
-      clearInterval(examTimerRef.current);
       calculateExamResults();
     }
   };
 
   const calculateExamResults = () => {
     let score = 0;
-    const weakAreasSet = new Set<string>();
-
     examQuestions.forEach((q, idx) => {
       const selected = userSelections[idx];
       if (selected === q.correctAnswer) {
         score++;
-      } else {
-        // Collect subject topics for weaknesses
-        weakAreasSet.add(q.explanation?.substring(0, 20) || "General Concept mismatch");
       }
     });
 
@@ -247,50 +282,48 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
     setExamGrade(grade);
     setExamMode('results');
 
-    // Save Result to Logs
+    // Save logs to history
     const newSession = {
       id: `session_${Date.now()}`,
       subject: selectedSubject,
       date: new Date().toLocaleDateString(),
       score: percent,
-      grade,
-      weakAreas: Array.from(weakAreasSet).slice(0, 2)
+      grade
     };
 
     const updatedSessions = [newSession, ...pastSessions].slice(0, 15);
     setPastSessions(updatedSessions);
     localStorage.setItem("ethiolearn_exam_sessions_history", JSON.stringify(updatedSessions));
 
-    // Update global diagnostics metrics in analytics
+    // Save last score for Dashboard "Continue where left off" helper
+    localStorage.setItem('ethiolearn_last_subject', selectedSubject);
+    localStorage.setItem('ethiolearn_last_quiz_score', percent.toString());
+
+    // Update global diagnostics metrics
     try {
       const analytics = JSON.parse(localStorage.getItem("ethiolearn_analytics") || "{}");
+      analytics.examsDone = (analytics.examsDone || 0) + 1;
       analytics.examHistory = analytics.examHistory || [];
       analytics.examHistory.push({
         date: new Date().toLocaleDateString(),
         score: percent
       });
-      // Increment streak
-      analytics.examsDone = (analytics.examsDone || 0) + 1;
       localStorage.setItem("ethiolearn_analytics", JSON.stringify(analytics));
     } catch(e) {}
 
     playSuccessChime();
-    if (percent >= 50) {
-      triggerDopaminePop();
-    }
+    triggerDopaminePop();
   };
 
-  // AI 5-Minute Revision summary tool
+  // AI 5-Minute summaries
   const runRevisionAI = async () => {
     if (!revisionTopic.trim()) return;
-    // Allow request to proceed as the backend server has automatic fallback variables (like GEMINI_API_KEY) configured.
-
     setIsSummarizing(true);
     setRevisionOutput('');
     playClickChime();
 
     try {
-      const sysPr = "You are a concise academic annotator for EthioLearn Pro. Summarize requested concepts into five bullet points using simple formatting, highlighting memory tricks.";
+      const sysPr = "You are a concise academic summary annotator. Summarize requested concepts into five bullet points using simple formatting, highlighting memory tricks.";
       const messages: ChatMessage[] = [{ role: 'user', content: `Summarize the topic: "${revisionTopic}" under the subject "${selectedSubject}" in a 5-minute revision card.` }];
 
       await submitClaudeChat(messages, sysPr, apiKey, {
@@ -304,65 +337,49 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
         },
         onError: (err) => {
           setIsSummarizing(false);
-          setRevisionOutput(`Revision failed: ${err}`);
+          setRevisionOutput(
+            language === 'en'
+              ? `Revision formulation failed: ${err}`
+              : `ማጠቃለያውን ማውጣት አልተቻለም፡ ${err}`
+          );
           playFailureChime();
         }
       });
     } catch (err: any) {
       setIsSummarizing(false);
-      setRevisionOutput(`Error formulating summaries: ${err}`);
+      setRevisionOutput(`Error: ${err}`);
       playFailureChime();
     }
   };
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Countdown Board */}
-      <div className="bg-gradient-to-r from-red-950/20 to-[#1A7A3C]/10 border border-[#C8962E]/30 p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Clock className="w-6 h-6 text-[#C8962E] animate-pulse" />
-          <div>
-            <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">Ethiopian Matric Countdown</h3>
-            <p className="text-xs text-zinc-500 font-mono">{countdownText || 'Calculating remaining days...'}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-[#8A8480]" />
-          <input
-            type="date"
-            value={examDate}
-            onChange={(e) => setExamDate(e.target.value)}
-            className="bg-[#0D0D0D] border border-[#2A2A2A] rounded px-2.5 py-1 text-xs outline-none text-[#F0EDE8] cursor-pointer focus:border-[#C8962E]"
-          />
-        </div>
-      </div>
-
       <AnimatePresence mode="wait">
-        {/* Setup Stage View */}
+        {/* SETUP SCREEN */}
         {examMode === 'setup' && (
           <motion.div
             key="setup"
-            initial={{ opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0, scale: 0.99 }}
             animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-6"
           >
-            
-            {/* Setup Config panel */}
-            <div className="bg-[#161616] p-5 rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-[#2A2A2A]">
-                <Compass className="w-5 h-5 text-[#C8962E]" />
-                <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">Configure Mock Exam</h3>
+            {/* Form configuration panel */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <Compass className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-serif font-bold text-base text-slate-900">
+                  {language === 'en' ? 'Start a Quiz' : 'ፈተና ጀምር'}
+                </h3>
               </div>
 
-              {/* Subject selector */}
-              <div className="space-y-1.5 text-xs">
-                <label className="text-[#8A8480] font-semibold">Subject Curriculum</label>
+              {/* Subject dropdown */}
+              <div className="space-y-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label>{language === 'en' ? 'Subject / ኮርስ' : 'የትምህርት አይነት'}</label>
                 <select
                   value={selectedSubject}
                   onChange={(e) => setSelectedSubject(e.target.value)}
-                  className="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg py-2.5 px-3 outline-none text-[#F0EDE8] cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 font-sans font-semibold rounded-xl py-3 px-3.5 outline-none cursor-pointer focus:border-emerald-600"
                 >
                   {enrolledSubjects.map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -370,92 +387,75 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
                 </select>
               </div>
 
-              {/* Difficulty selector */}
-              <div className="space-y-1.5 text-xs">
-                <label className="text-[#8A8480] font-semibold">Exam Standard (Difficulty)</label>
-                <div className="grid grid-cols-3 gap-2 bg-[#0D0D0D] p-1 rounded-lg border border-[#2A2A2A]">
-                  {['easy', 'medium', 'hard'].map((lvl) => (
-                    <button
-                      key={lvl}
-                      type="button"
-                      onClick={() => { setDifficulty(lvl as any); playClickChime(); }}
-                      className={`py-1.5 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer ${
-                        difficulty === lvl ? 'bg-[#C8962E] text-[#0D0D0D]' : 'text-zinc-500 hover:text-white'
-                      }`}
-                    >
-                      {lvl}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Question Count */}
-              <div className="space-y-1.5 text-xs">
-                <label className="text-[#8A8480] font-semibold">Count of Questions</label>
-                <div className="grid grid-cols-3 gap-2 bg-[#0D0D0D] p-1 rounded-lg border border-[#2A2A2A]">
+              {/* Question count options */}
+              <div className="space-y-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label>{language === 'en' ? 'Length / ብዛት' : 'የጥያቄዎች ብዛት'}</label>
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
                   {[5, 10, 20].map((count) => (
                     <button
                       key={count}
-                      type="button"
                       onClick={() => { setQCount(count); playClickChime(); }}
-                      className={`py-1.5 rounded text-xs font-mono font-bold transition-colors cursor-pointer ${
-                        qCount === count ? 'bg-[#1A7A3C] text-white' : 'text-zinc-500'
+                      className={`py-2 text-xs font-bold rounded-lg cursor-pointer ${
+                        qCount === count ? 'bg-[#078930] text-white shadow-sm' : 'text-slate-500'
                       }`}
                     >
-                      {count} Items
+                      {count} {language === 'en' ? 'Qns' : 'ጥያቄ'}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Submit triggers */}
-              <div className="pt-3 space-y-2">
+              {/* Action Buttons */}
+              <div className="pt-3 space-y-3">
                 <button
-                  type="button"
                   onClick={handleGenerateMockAI}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#C8962E] to-[#1A7A3C] text-[#0D0D0D] text-xs font-bold rounded-lg tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow hover:opacity-95"
+                  className="w-full h-12 min-h-[48px] bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white text-sm font-serif font-extrabold tracking-wide rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-md"
                 >
-                  <Sparkles className="w-4 h-4" /> AI Model Mock Exam
+                  <Sparkles className="w-4 h-4" />
+                  {language === 'en' ? 'Formulate Quiz with AI' : 'በአይ ፈተና አዘጋጅ'}
                 </button>
 
                 <button
-                  type="button"
                   onClick={handleStartPastExam}
-                  className="w-full py-3.5 bg-zinc-90 w-full bg-zinc-900 border border-[#2A2A2A] hover:bg-zinc-850 text-xs font-bold rounded-lg text-zinc-300 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-12 min-h-[48px] bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-serif font-extrabold tracking-wide rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
-                  <FileText className="w-4 h-4 text-[#8A8480]" /> Classic Past Papers
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  {language === 'en' ? 'Start Classic Paper' : 'የተለመዱ የድሮ ፈተናዎች'}
                 </button>
               </div>
 
               {loadingText && (
-                <div className="p-3 bg-[#0D0D0D] rounded border border-[#C8962E]/20 text-center text-[11px] text-[#C8962E] font-medium animate-pulse">
+                <div className="p-3 bg-emerald-55/30 border border-emerald-500/20 rounded-xl text-center text-xs text-emerald-800 font-bold animate-pulse">
                   {loadingText}
                 </div>
               )}
             </div>
 
-            {/* Quick 5-Minute Revision Summaries */}
-            <div className="bg-[#161616] p-5 rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-[#2A2A2A]">
-                <Zap className="w-5 h-5 text-[#C8962E]" />
-                <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">5-Min Revision Cards</h3>
+            {/* AI Revision helper cards */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <Zap className="w-5 h-5 text-amber-500 animate-bounce" />
+                <h3 className="font-serif font-bold text-base text-slate-900">
+                  {language === 'en' ? '5-Min Topic Summary' : 'ፈጣን ማጠቃለያ'}
+                </h3>
               </div>
 
-              <div className="space-y-1.5 text-xs">
-                <label className="text-zinc-500">Provide topic from handbook</label>
+              <div className="space-y-2">
+                <p className="text-xs text-slate-400 font-sans leading-relaxed">
+                  {language === 'en' ? 'Enter any topic and get immediate bullet notes to review before exams!' : 'ያልገባዎትን ርዕስ እዚህ ይጻፉና በአጭር ነጥቦች ተዘጋጅቶ ይከልሱት!'}
+                </p>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    required
-                    placeholder="e.g. Enzymes activation energy..."
+                    placeholder="e.g. Mitochondria, GDP, FDRE..."
                     value={revisionTopic}
                     onChange={(e) => setRevisionTopic(e.target.value)}
-                    className="flex-1 bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 outline-none text-[#F0EDE8] w-24"
+                    className="flex-1 bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-3.5 outline-none"
                   />
                   <button
                     onClick={runRevisionAI}
                     disabled={isSummarizing || !revisionTopic.trim()}
-                    className="p-3 bg-[#1A7A3C] text-white rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 disabled:opacity-30"
+                    className="h-10 px-4 bg-[#078930] hover:bg-emerald-700 text-white rounded-xl flex items-center justify-center cursor-pointer disabled:opacity-40"
                   >
                     <RefreshCw className={`w-4 h-4 ${isSummarizing ? 'animate-spin' : ''}`} />
                   </button>
@@ -463,128 +463,177 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
               </div>
 
               {revisionOutput ? (
-                <div className="bg-[#0D0D0D] p-3 rounded-lg border border-[#2A2A2A] text-[11px] leading-relaxed max-h-56 overflow-y-auto whitespace-pre-line text-zinc-300 font-sans shadow-inner">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs leading-relaxed max-h-60 overflow-y-auto whitespace-pre-line text-slate-700 font-sans">
                   {revisionOutput}
                 </div>
               ) : (
-                <div className="p-10 border border-dashed border-[#2A2A2A] rounded-lg text-center text-[11px] text-zinc-500">
-                  Summary bullets appear here. Key takeaways for quick retention.
+                <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 font-serif">
+                  {language === 'en' ? 'Notes outcome will compile here...' : 'የተዘጋጀው ማጠቃለያ እዚህ ላይ ይወጣል...'}
                 </div>
               )}
             </div>
 
-            {/* Historic Exam Prep Cards logs */}
-            <div className="bg-[#161616] p-5 rounded-xl border border-[#2A2A2A] space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-[#2A2A2A]">
-                <Trophy className="w-5 h-5 text-[#C8962E]" />
-                <h3 className="font-serif font-bold text-sm text-[#F0EDE8]">Score Diagnostics</h3>
+            {/* Score logs list */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+                <Trophy className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-serif font-bold text-base text-[#078930]">
+                  {language === 'en' ? 'Performance Logs' : 'የውጤት መዝገብ'}
+                </h3>
               </div>
 
               {pastSessions.length === 0 ? (
-                <div className="p-8 border border-dashed border-[#2A2A2A] rounded-lg text-center text-xs text-zinc-500">
-                  Completing mock sheets automatically tracks readiness percentage scoring histories here.
+                <div className="p-8 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400 font-serif">
+                  {language === 'en' ? 'Your test grades history is currently empty' : 'የወሰዷቸው ፈተናዎች ውጤት እዚህ ሙሉ ታሪክ ሆኖ ይቀመጣል'}
                 </div>
               ) : (
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                   {pastSessions.map((sess, idx) => (
-                    <div key={idx} className="bg-[#0D0D0D] p-3 rounded-lg border border-[#2A2A2A] flex items-center justify-between text-xs transition-transform hover:scale-[1.01]">
-                      <div className="space-y-1">
-                        <span className="font-semibold text-zinc-200">{sess.subject}</span>
-                        <span className="block text-[10px] text-zinc-500">{sess.date}</span>
+                    <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-bold text-slate-800 block leading-tight">{sess.subject}</span>
+                        <span className="text-[10px] text-slate-400 mt-0.5 block">{sess.date}</span>
                       </div>
                       <div className="text-right">
-                        <span className="font-mono text-sm font-bold text-[#C8962E]">{sess.score}%</span>
-                        <span className={`block text-[10px] font-black ${sess.grade === 'F' ? 'text-[#BE1931]' : 'text-[#1A7A3C]'}`}>Grade: {sess.grade}</span>
+                        <span className="font-mono font-extrabold text-sm text-emerald-600 block">{sess.score}%</span>
+                        <span className="block text-[10px] font-black uppercase text-amber-600">Grade {sess.grade}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-
           </motion.div>
         )}
 
-        {/* Active Exam Running View */}
+        {/* ACTIVE EXAM RUNNING SCREEN */}
         {examMode === 'active' && examQuestions.length > 0 && (
           <motion.div
             key="active"
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl mx-auto bg-[#161616] p-6 rounded-2xl border border-[#C8962E]/20 relative shadow-2xl"
+            exit={{ opacity: 0 }}
+            className="max-w-xl mx-auto bg-white p-6 rounded-2xl border border-slate-200 shadow-md space-y-5"
           >
-            {/* Header progress info */}
-            <div className="flex justify-between items-center pb-4 border-b border-[#2A2A2A] text-xs font-mono mb-6">
-              <span className="text-[#C8962E]">Subject: {selectedSubject}</span>
-              <span className="text-zinc-400">Question {activeQIndex + 1} of {examQuestions.length}</span>
+            {/* Visual Progress Bar (Requirement) */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase font-mono">
+                <span>{selectedSubject}</span>
+                <span className="text-emerald-700">
+                  {language === 'en' 
+                    ? `Question ${activeQIndex + 1} of ${examQuestions.length}`
+                    : `ጥያቄ ${activeQIndex + 1} ከ ${examQuestions.length}`}
+                </span>
+              </div>
               
-              <span className="flex items-center gap-1.5 text-zinc-300 font-bold bg-[#0D0D0D] px-3 py-1 rounded-full border border-[#2A2A2A]">
-                <Clock className={`w-3.5 h-3.5 ${timeRemaining < 15 ? 'text-[#BE1931] animate-pulse' : 'text-[#1A7A3C]'}`} />
+              {/* Actual HTML progress percentage indicators bar */}
+              <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                <div 
+                  className="bg-[#078930] h-full rounded-full transition-all duration-300" 
+                  style={{ width: `${((activeQIndex + 0.5) / examQuestions.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Timer card block */}
+            <div className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <span className="text-xs font-semibold text-slate-500">
+                {language === 'en' ? 'Choose carefully to get feedback' : 'መልካም ፈተና ይሁንልዎት!'}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-extrabold font-mono text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 select-none">
+                <Clock className="w-3.5 h-3.5 text-amber-600" />
                 {timeRemaining} Seconds
               </span>
             </div>
 
-            {/* Question Box */}
-            <div className="space-y-6">
-              <h3 className="font-serif text-lg text-[#F0EDE8] tracking-wide leading-relaxed pl-1">
+            {/* Question Text block */}
+            <div className="space-y-5 py-2">
+              <h3 className="font-serif text-lg text-slate-900 font-extrabold leading-relaxed">
                 {examQuestions[activeQIndex]?.question}
               </h3>
 
-              {/* Options lists selection */}
-              <div className="grid grid-cols-1 gap-3">
+              {/* LARGE BUTTONS lists selecting - h-14 min-h-[48px], responsive (Requirement) */}
+              <div className="grid grid-cols-1 gap-2.5">
                 {examQuestions[activeQIndex]?.options.map((opt: string) => {
                   const isSelected = userSelections[activeQIndex] === opt;
+                  const isCorrect = examQuestions[activeQIndex].correctAnswer === opt;
+                  
+                  let btnColorStyle = "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300";
+                  
+                  // Instant feedback coloring rule (Green for Correct, Red for Incorrect)
+                  if (isAnswerRevealed) {
+                    if (isCorrect) {
+                      btnColorStyle = "bg-emerald-50 border-emerald-500 text-emerald-800 font-extrabold ring-1 ring-emerald-500";
+                    } else if (isSelected) {
+                      btnColorStyle = "bg-red-50 border-red-500 text-red-800 font-extrabold ring-1 ring-red-500";
+                    } else {
+                      btnColorStyle = "bg-slate-50 border-slate-100 text-slate-400 opacity-60";
+                    }
+                  } else if (isSelected) {
+                    btnColorStyle = "bg-emerald-50 border-emerald-500 text-emerald-800 font-bold";
+                  }
+
                   return (
                     <button
                       key={opt}
-                      onClick={() => {
-                        playClickChime();
-                        setUserSelections(prev => ({ ...prev, [activeQIndex]: opt }));
-                      }}
-                      className={`w-full text-left p-4 rounded-xl border text-xs leading-relaxed transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-[#C8962E]/10 border-[#C8962E] text-[#C8962E] shadow font-medium scale-[1.01]'
-                          : 'bg-[#0D0D0D] border-[#2A2A2A] text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
-                      }`}
+                      disabled={isAnswerRevealed}
+                      onClick={() => handleOptionSelect(opt)}
+                      className={`w-full min-h-[48px] h-14 px-4 rounded-xl text-left text-sm leading-snug font-sans transition-all flex items-center justify-between border-2 shadow-sm cursor-pointer select-none ${btnColorStyle}`}
                     >
-                      {opt}
+                      <span>{opt}</span>
+                      {isAnswerRevealed && isCorrect && <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 ml-1" />}
+                      {isAnswerRevealed && isSelected && !isCorrect && <XCircle className="w-4 h-4 text-red-600 shrink-0 ml-1" />}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="flex justify-between items-center pt-8 border-t border-[#2A2A2A] mt-8">
-              <button
-                disabled={activeQIndex === 0}
-                onClick={() => {
-                  playClickChime();
-                  setActiveQIndex(prev => prev - 1);
-                }}
-                className="px-4 py-2 bg-zinc-900 border border-[#2A2A2A] hover:bg-zinc-855 rounded-lg text-xs text-zinc-400 disabled:opacity-20 cursor-pointer"
+            {/* Explanation card dynamically revealed below options if answered (Requirement) */}
+            {isAnswerRevealed && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-slate-50 rounded-xl border border-slate-200 mt-2 text-xs text-slate-600 space-y-1.5"
               >
-                Previous Question
-              </button>
+                <div className="flex items-center gap-1.5 font-extrabold text-slate-800 uppercase tracking-wide">
+                  {userSelections[activeQIndex] === examQuestions[activeQIndex].correctAnswer ? (
+                    <span className="text-[#078930] flex items-center gap-1">🌟 {language === 'en' ? 'Excellent! Correct' : 'በጣም ጎበዝ! መልስዎ ትክክል ነው'}</span>
+                  ) : (
+                    <span className="text-red-600 flex items-center gap-1">✨ {language === 'en' ? 'Incorrect' : 'ትክክለኛው መልስ አልነበረም'}</span>
+                  )}
+                </div>
+                <p className="font-sans leading-normal font-medium italic">
+                  {examQuestions[activeQIndex]?.explanation || (language === 'en' ? 'Review your subject textbooks.' : 'በመማሪያ መጽሐፉ ላይ ያሉትን ማብራሪያዎች ያንብቡ።')}
+                </p>
+              </motion.div>
+            )}
 
+            {/* Bottom Proceed bar */}
+            <div className="flex justify-end pt-3 border-t border-slate-100">
               <button
                 onClick={handleNextQuestion}
                 disabled={!userSelections[activeQIndex]}
-                className="px-6 py-2.5 bg-[#1A7A3C] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow hover:opacity-95 cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto h-12 px-6 bg-[#078930] hover:bg-emerald-700 text-white font-serif font-extrabold text-sm rounded-xl flex items-center justify-center gap-1.5 shadow disabled:opacity-40 cursor-pointer select-none active:scale-98"
               >
-                {activeQIndex === examQuestions.length - 1 ? 'Complete Mock Review' : 'Proceed Details'} <ArrowRight className="w-4 h-4" />
+                <span>
+                  {activeQIndex === examQuestions.length - 1 
+                    ? (language === 'en' ? 'Complete quiz ' : 'ውጤት ይመልከቱ ') 
+                    : (language === 'en' ? 'Next Question ' : 'ቀጣይ ጥያቄ ')}
+                </span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </motion.div>
         )}
 
-        {/* Results Page */}
+        {/* RESULTS CELEBRATORY SCREEN */}
         {examMode === 'results' && (
           <motion.div
             key="results"
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto bg-[#161616] p-6 rounded-2xl border border-[#2A2A2A] text-center space-y-6 relative overflow-hidden"
+            className="max-w-lg mx-auto bg-white p-6 rounded-2xl border border-slate-200 text-center space-y-6 relative overflow-hidden shadow-lg"
           >
             {/* Dopamine confetti floating particles */}
             {particles.map(p => (
@@ -601,59 +650,69 @@ export default function ExamPrep({ apiKey, enrolledSubjects }: ExamPrepProps) {
                 }}
               />
             ))}
-            <div className="w-20 h-20 bg-[#C8962E]/10 border border-[#C8962E]/30 text-[#C8962E] rounded-full flex items-center justify-center mx-auto text-3xl font-bold font-serif shadow-lg">
+
+            <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-100 text-[#078930] rounded-full flex items-center justify-center mx-auto text-3xl font-serif font-black shadow-inner">
               {examGrade}
             </div>
 
-            <div>
-              <h2 className="font-serif text-xl font-bold text-[#F0EDE8]">Mock Session Finalized!</h2>
-              <p className="text-xs text-zinc-500">Diagnostic grade computed on active curriculum checks</p>
+            <div className="space-y-1.5">
+              <h2 className="font-serif text-2xl font-black text-slate-900 leading-tight">
+                {language === 'en' ? 'Quiz Session Finalized!' : 'የፈተና ጊዜ ተጠናቋል!'}
+              </h2>
+              
+              {/* Amharic Encouragement Custom block based on score rules (Requirement) */}
+              <p className="text-lg font-serif font-bold text-[#078930]">
+                {Math.round((examScore / examQuestions.length) * 100) >= 80 ? (
+                  <span>ጎበዝ! ምርጥ ስራ ነው 🌟 <span className="block text-xs font-sans text-slate-400 mt-1">Excellent! Keep up this high standard!</span></span>
+                ) : Math.round((examScore / examQuestions.length) * 100) >= 50 ? (
+                  <span>በጣም ጥሩ! በርታ/በርቺ 💪 <span className="block text-xs font-sans text-slate-400 mt-1">Great job! Keep trying and advancing!</span></span>
+                ) : (
+                  <span>ተስፋ አትቁረጥ! ይቻላል ✨ <span className="block text-xs font-sans text-slate-400 mt-1">Never give up under hard steps!</span></span>
+                )}
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto text-xs bg-[#0D0D0D] p-4 rounded-xl border border-[#2A2A2A]">
-              <div className="space-y-1">
-                <span className="text-zinc-500">Correct Answers:</span>
-                <span className="font-mono text-base font-bold text-white block">{examScore} / {examQuestions.length}</span>
+            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto text-xs bg-slate-50 p-4 border border-slate-200 rounded-xl shadow-inner">
+              <div className="space-y-0.5">
+                <span className="text-slate-400 font-bold uppercase">{language === 'en' ? 'Score' : 'ውጤት'}</span>
+                <span className="font-mono text-base font-extrabold text-slate-800 block">{examScore} / {examQuestions.length}</span>
               </div>
 
-              <div className="space-y-1">
-                <span className="text-zinc-500">Calculated Percentage:</span>
-                <span className="font-mono text-base font-bold text-[#C8962E] block">{Math.round((examScore / examQuestions.length) * 100)}%</span>
+              <div className="space-y-0.5">
+                <span className="text-slate-400 font-bold uppercase">{language === 'en' ? 'Percentage' : 'በመቶኛ'}</span>
+                <span className="font-mono text-base font-extrabold text-[#078930] block">
+                  {Math.round((examScore / examQuestions.length) * 100)}%
+                </span>
               </div>
             </div>
 
-            <div className="space-y-3 pb-4">
-              <h4 className="text-xs font-semibold text-zinc-300">Detailed Diagnostic Feedback:</h4>
-              <div className="text-left bg-zinc-900 border border-[#2A2A2A] p-3.5 rounded-lg space-y-3.5 text-xs">
-                {examQuestions.map((q, idx) => {
-                  const isCorrect = userSelections[idx] === q.correctAnswer;
-                  return (
-                    <div key={idx} className="border-b border-[#2A2A2A] pb-3 last:border-0 last:pb-0">
-                      <p className="font-medium text-zinc-300 flex items-center gap-1.5">
-                        {isCorrect ? (
-                          <span className="text-[#1A7A3C] font-semibold">✓</span>
-                        ) : (
-                          <span className="text-[#BE1931] font-semibold">✗</span>
-                        )}
-                        Question {idx + 1}: {q.question}
-                      </p>
-                      <p className="text-[10px] text-zinc-500 pl-4 mt-1 leading-normal italic">
-                        {isCorrect ? 'Correct selection!' : `Answer: ${q.correctAnswer}.`} {q.explanation}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Detailed answers logging recap */}
+            <div className="text-left bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3 text-xs max-h-56 overflow-y-auto">
+              <p className="font-bold text-slate-700 pb-1.5 border-b border-slate-200 font-serif">
+                {language === 'en' ? 'Questions Recap' : 'ለጥያቄዎች የተሰጡ መልሶች፡'}
+              </p>
+              {examQuestions.map((q, idx) => {
+                const isCorrect = userSelections[idx] === q.correctAnswer;
+                return (
+                  <div key={idx} className="pb-2 border-b border-slate-100 last:border-none last:pb-0 font-sans">
+                    <p className="font-medium text-slate-800 flex items-start gap-1">
+                      <span className={isCorrect ? "text-[#078930] font-black" : "text-red-500 font-black"}>
+                        {isCorrect ? "✓" : "✗"}
+                      </span>
+                      <span>
+                        {language === 'en' ? 'Qns' : 'ጥያቄ'} {idx + 1}: {q.question}
+                      </span>
+                    </p>
+                  </div>
+                );
+              })}
             </div>
 
             <button
-              onClick={() => {
-                playClickChime();
-                setExamMode('setup');
-              }}
-              className="px-6 py-2 bg-[#C8962E] text-[#0D0D0D] font-bold rounded-lg text-xs hover:opacity-95 cursor-pointer"
+              onClick={() => { playClickChime(); setExamMode('setup'); }}
+              className="w-full h-12 bg-[#078930] hover:bg-emerald-700 text-white font-serif font-extrabold text-sm rounded-xl cursor-pointer"
             >
-              Exit Mock Dashboard
+              {language === 'en' ? 'Practice Another Quiz' : 'ሌላ የፈተና ጥያቄ ውሰድ'}
             </button>
           </motion.div>
         )}

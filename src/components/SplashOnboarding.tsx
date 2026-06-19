@@ -37,7 +37,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const [rememberMe, setRememberMe] = useState(true);
   const [name, setName] = useState('');
   const [university, setUniversity] = useState('');
-  const [year, setYear] = useState('1st Year');
+  const [year, setYear] = useState('Grade 12');
   const [avatar, setAvatar] = useState('star');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([
     "Emerging Technologies", "Introduction to Economics", "General Biology", "Communicative English", "Moral and Civic Education"
@@ -142,7 +142,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     playSuccessChime();
     
     // Pass completed profile to parent to load user session
-    onComplete(found.profile);
+    onComplete({ ...found.profile, isRegistered: true });
   };
 
   const handleQuickLogin = (acc: AccountInfo) => {
@@ -155,7 +155,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
         localStorage.setItem('ethiolearn_active_email', acc.email);
       } catch (e) {}
       playSuccessChime();
-      onComplete(acc.profile);
+      onComplete({ ...acc.profile, isRegistered: true });
     } else {
       // Autofill email and prompt for password
       setEmail(acc.email);
@@ -209,7 +209,9 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       dailyGoalHours: 2,
       theme: 'dark',
       language: 'both',
-      avatar
+      avatar,
+      isRegistered: true,
+      unregisteredAICredits: 5
     };
 
     const newAccount: AccountInfo = {
@@ -236,7 +238,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       name: "Ethiopian Scholar",
       email: "scholar.guest@ethiolearn.com",
       university: "Addis Ababa University",
-      year: "1st Year",
+      year: "University",
       subjects: [
         "Emerging Technologies",
         "Introduction to Economics",
@@ -248,7 +250,9 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       dailyGoalHours: 2,
       theme: 'dark',
       language: 'both',
-      avatar: 'champion'
+      avatar: 'champion',
+      isRegistered: false,
+      unregisteredAICredits: 5
     };
     onComplete(guestProfile);
   };
@@ -972,11 +976,8 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                     onChange={(e) => setYear(e.target.value)}
                     className="w-full bg-[#090909] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-3 py-2 text-zinc-100 outline-none text-xs transition-all appearance-none cursor-pointer"
                   >
-                    <option value="1st Year">1st Year (Freshman)</option>
-                    <option value="2nd Year">2nd Year (Sophomore)</option>
-                    <option value="3rd Year">3rd Year (Junior)</option>
-                    <option value="4th Year">4th Year (Senior)</option>
-                    <option value="Secondary">Preparatory Secondary</option>
+                    <option value="Grade 12">Grade 12 (Preparatory Senior)</option>
+                    <option value="University">University Student</option>
                   </select>
                 </div>
               </div>
