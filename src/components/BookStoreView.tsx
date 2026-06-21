@@ -470,6 +470,14 @@ export default function BookStoreView({
     setAiResponse('');
     setCustomQuizQuestions([]);
     setQuizScore(null);
+
+    // Speedily scroll the active module block into view for seamless mobile view
+    setTimeout(() => {
+      const viewer = document.getElementById('module-viewer-section');
+      if (viewer) {
+        viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
   };
 
   // Run AI summaries
@@ -906,7 +914,7 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
         </div>
 
         {/* Interactive PDF reading and AI panel (7 columns) */}
-        <div className="lg:col-span-7 space-y-6">
+        <div id="module-viewer-section" className="lg:col-span-7 space-y-6">
           {activeModule ? (
             <div className="bg-white dark:bg-[#0c0d12] border border-slate-200 dark:border-zinc-805 rounded-2xl p-6 shadow-sm space-y-6">
               

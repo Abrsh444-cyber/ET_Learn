@@ -504,6 +504,14 @@ export default function UniversityExamsView({
     setUserSelectedChoice(null);
     setAiResult('');
     setAiMode('none');
+
+    // Smoothly scroll the selected exam questionnaire workspace into active view on mobile/tablet viewports
+    setTimeout(() => {
+      const viewer = document.getElementById('exam-viewer-section');
+      if (viewer) {
+        viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
   };
 
   const handleSelectQuestion = (idx: number) => {
@@ -698,7 +706,7 @@ Guide me on how to approach this. Give me the primary formula but let me do the 
         </div>
 
         {/* Right column: active sheet workspace & question display (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
+        <div id="exam-viewer-section" className="lg:col-span-8 space-y-6">
           {selectedSheet ? (
             <div className="bg-white dark:bg-[#0c0d12] border border-slate-200 dark:border-zinc-805 p-6 rounded-2xl shadow-sm space-y-5">
               

@@ -84,6 +84,17 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
           // Keep default mode as "splash" to allow immediate one-touch quick start
         }
       }
+      
+      // Load remembered login credentials if they exist to remember users on retry
+      const remembered = localStorage.getItem('ethiolearn_remember_login');
+      if (remembered) {
+        const parsedRem = JSON.parse(remembered);
+        if (parsedRem && parsedRem.email) {
+          setEmail(parsedRem.email);
+          setPassword(parsedRem.password || '');
+          setRememberMe(parsedRem.rememberMe !== false);
+        }
+      }
     } catch (e) {}
   }, []);
 
@@ -137,6 +148,17 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       
       // Set active user session
       localStorage.setItem('ethiolearn_active_email', found.email);
+
+      // Save remembered credentials if checked
+      if (rememberMe) {
+        localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
+          email: found.email,
+          password: found.passwordEncrypted,
+          rememberMe: true
+        }));
+      } else {
+        localStorage.removeItem('ethiolearn_remember_login');
+      }
     } catch (e) {}
 
     playSuccessChime();
@@ -226,6 +248,17 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     try {
       localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
       localStorage.setItem('ethiolearn_active_email', emailTrim);
+
+      // Save remembered credentials if checked
+      if (rememberMe) {
+        localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
+          email: emailTrim,
+          password: passwordTrim,
+          rememberMe: true
+        }));
+      } else {
+        localStorage.removeItem('ethiolearn_remember_login');
+      }
     } catch (e) {}
 
     playSuccessChime();

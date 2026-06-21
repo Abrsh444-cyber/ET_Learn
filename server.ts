@@ -8,12 +8,36 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  // In-memory persistent master key cache for students
+  let cachedMasterApiKey: string | undefined = undefined;
+  const storeFilePath = path.join(process.cwd(), 'stored_master_api_key.txt');
+
+  // Load key from disk at boot if it exists
+  try {
+    if (fs.existsSync(storeFilePath)) {
+      cachedMasterApiKey = fs.readFileSync(storeFilePath, 'utf8').trim();
+      console.log('[EthioLearn Server] Loaded saved master API key from file successfully.');
+    }
+  } catch (e) {
+    console.warn('[EthioLearn Server] Failed to read cached master key file:', e);
+  }
+
+  const isValidServiceKey = (key: string): boolean => {
+    if (!key) return false;
+    const k = key.trim();
+    if (k.length < 15) return false;
+    const lower = k.toLowerCase();
+    if (['no-key', 'no-api-key', 'undefined', 'null', 'none'].includes(lower)) return false;
+    return k.startsWith('sk-') || k.startsWith('AIzaSy') || k.startsWith('gsk_');
+  };
 
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -32,8 +56,21 @@ async function startServer() {
         }
       }
       
-      // Prioritize client-provided API key from settings, then fallback to server env
-      const apiKey = resolvedUserKey || req.headers['x-api-key'] || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY; 
+      // If the incoming key is a valid service key from settings/onboarding (e.g. from the admin), cache it!
+      if (resolvedUserKey && isValidServiceKey(resolvedUserKey)) {
+        if (resolvedUserKey !== cachedMasterApiKey) {
+          cachedMasterApiKey = resolvedUserKey;
+          try {
+            fs.writeFileSync(storeFilePath, resolvedUserKey, 'utf8');
+            console.log('[EthioLearn Server] Automatically saved/updated master API key from admin request.');
+          } catch (e) {
+            console.warn('[EthioLearn Server] Failed to save master key to file:', e);
+          }
+        }
+      }
+      
+      // Prioritize client-provided API key from settings, then fallback to server env, then cached master key
+      const apiKey = resolvedUserKey || req.headers['x-api-key'] || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || cachedMasterApiKey; 
       
       if (!apiKey || apiKey === 'no-key' || apiKey === 'no-api-key') {
         return res.status(401).json({ 
