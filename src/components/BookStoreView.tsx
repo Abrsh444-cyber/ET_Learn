@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  BookOpen, Search, Download, Sparkles, AlertCircle, Play, FileText, Bot, Compass, CheckCircle, ChevronDown, Award, RefreshCw 
+  BookOpen, Search, Download, Sparkles, AlertCircle, Play, FileText, Bot, Compass, CheckCircle, ChevronDown, Award, RefreshCw,
+  BookOpenCheck, Sliders, Sun, Moon, Type, ChevronLeft, ChevronRight, Share2, HelpCircle, X, Check, Database, AlertTriangle, MessageSquare
 } from 'lucide-react';
 import { StudentProfile } from '../types';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
 import { submitClaudeChat } from '../utils/ai';
+import { fetchSupabaseBooks, getSupabase, saveSupabaseCredentials, clearSupabaseCredentials } from '../utils/supabaseClient';
+import { getChapterContent } from '../data/textbookChapterContent';
 
 interface BookStoreViewProps {
   profile: StudentProfile;
@@ -13,6 +16,7 @@ interface BookStoreViewProps {
   language: 'en' | 'am';
   onNavigate: (page: string) => void;
   onStudyAction: () => void;
+  supabaseBooks?: any[];
 }
 
 interface ModuleResource {
@@ -25,6 +29,9 @@ interface ModuleResource {
   description: string;
   languageSupport: 'English Only' | 'Bilingual';
   proRequired: boolean;
+  pdfUrl?: string;
+  contentJson?: string;
+  isSupabase?: boolean;
 }
 
 const PREBUILT_MODULES: ModuleResource[] = [
@@ -247,11 +254,62 @@ export default function BookStoreView({
   apiKey,
   language,
   onNavigate,
-  onStudyAction
+  onStudyAction,
+  supabaseBooks
 }: BookStoreViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<string>('All');
   
+  // All active modules state
+  const [allModules, setAllModules] = useState<ModuleResource[]>([
+    ...PREBUILT_MODULES,
+    // Grade 12 New Curriculum books
+    {
+      id: 'g12_new_economics',
+      title: 'Grade 12 Economics New Curriculum Textbook',
+      subject: 'Economics',
+      grade: 'Grade 12 New Curriculum',
+      chapters: ['Chapter 1: Theory of Consumer Behavior', 'Chapter 2: Market Structure and Perfect Competition', 'Chapter 3: Macroeconomic Indicators in Ethiopia', 'Chapter 4: Monetary and Fiscal Policies'],
+      pages: 168,
+      description: 'Official Ministry new curriculum guide on demand elasticities, utility maximizations, inflation thresholds, and national bank monetary tools.',
+      languageSupport: 'Bilingual',
+      proRequired: false,
+    },
+    {
+      id: 'g12_new_geography',
+      title: 'Grade 12 Geography New Curriculum Textbook',
+      subject: 'Geography',
+      grade: 'Grade 12 New Curriculum',
+      chapters: ['Chapter 1: Geological Structure and Landforms of Ethiopia', 'Chapter 2: Climate and Weather Systems of East Africa', 'Chapter 3: Natural Resource Management & Conservation', 'Chapter 4: Population Density and Urbanization Profiles'],
+      pages: 182,
+      description: 'Comprehensive spatial analysis of Ethiopian highlands rift valleys, traditional farming soil cycles, and regional hydrological basins.',
+      languageSupport: 'Bilingual',
+      proRequired: false,
+    },
+    {
+      id: 'g12_new_history',
+      title: 'Grade 12 History New Curriculum Textbook',
+      subject: 'History',
+      grade: 'Grade 12 New Curriculum',
+      chapters: ['Chapter 1: Human Beginnings & Stone Age Cultures in the Horn', 'Chapter 2: State Formations, Trade and Religions (Axum, Lalibela)', 'Chapter 3: Modern Ethiopian State Unifications (1855-1974)', 'Chapter 4: The Federal Democratic Era & Contemporary Milestones'],
+      pages: 210,
+      description: 'New curriculum history resource mapping prehistoric sites like Hadar, early civilizations, Battle of Adwa victory details, and constitutional updates.',
+      languageSupport: 'Bilingual',
+      proRequired: true,
+    },
+    {
+      id: 'g12_new_it',
+      title: 'Grade 12 Information Technology New Curriculum Textbook',
+      subject: 'Information Technology',
+      grade: 'Grade 12 New Curriculum',
+      chapters: ['Chapter 1: Advanced Information Systems & Databases', 'Chapter 2: Computer Networking & Cyber-Defenses', 'Chapter 3: Web Development Fundamentals (HTML, CSS, JS)', 'Chapter 4: Algorithms, Python Scripting & Emerging Algos'],
+      pages: 154,
+      description: 'Official guide covering relational database schemas, web authoring elements, and logical block scripting paradigms for high schoolers.',
+      languageSupport: 'Bilingual',
+      proRequired: true,
+    }
+  ]);
+
   // Selected resource for detailed preview / AI interactions
   const [activeModule, setActiveModule] = useState<ModuleResource | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string>('');
@@ -267,12 +325,136 @@ export default function BookStoreView({
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [selectedQuizOption, setSelectedQuizOption] = useState<number | null>(null);
 
+  // Supabase states
+  const [isSupabaseLoading, setIsSupabaseLoading] = useState(false);
+  const [supabaseSyncStatus, setSupabaseSyncStatus] = useState<'idle' | 'loading' | 'success' | 'err'>('idle');
+  const [showSupabaseGuide, setShowSupabaseGuide] = useState(false);
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(() => localStorage.getItem('ethiolearn_supabase_url') || '');
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(() => localStorage.getItem('ethiolearn_supabase_key') || '');
+
+  // In-app Reader states
+  const [isReaderOpen, setIsReaderOpen] = useState(false);
+  const [viewingPdfMode, setViewingPdfMode] = useState(false);
+  const [readerTheme, setReaderTheme] = useState<'light' | 'dark' | 'sepia'>('light');
+  const [readerFontSize, setReaderFontSize] = useState<number>(14);
+  const [readerSearchQuery, setReaderSearchQuery] = useState('');
+  const [readerHighlights, setReaderHighlights] = useState<string[]>([]);
+  const [inlineAiQuestion, setInlineAiQuestion] = useState('');
+  const [inlineAiResponse, setInlineAiResponse] = useState('');
+  const [inlineAiLoading, setInlineAiLoading] = useState(false);
+
+  // Sync Supabase Books dynamically
+  const syncSupabase = async (manual = false) => {
+    setIsSupabaseLoading(true);
+    setSupabaseSyncStatus('loading');
+    if (manual) playClickChime();
+    
+    try {
+      const list = await fetchSupabaseBooks();
+      if (list && list.length > 0) {
+        const mapped: ModuleResource[] = list.map(item => ({
+          id: item.id || `sb_${Date.now()}_${Math.random()}`,
+          title: item.title || 'Dynamic Book',
+          subject: item.subject || 'Academic',
+          grade: item.grade || 'Grade 12 New Curriculum',
+          chapters: Array.isArray(item.chapters) 
+            ? item.chapters 
+            : (typeof item.chapters === 'string' ? JSON.parse(item.chapters) : ['Chapter 1']),
+          pages: Number(item.pages || 150),
+          description: item.description || '',
+          languageSupport: item.language_support || item.languageSupport || 'Bilingual',
+          proRequired: item.pro_required ?? item.proRequired ?? false,
+          pdfUrl: item.pdf_url,
+          contentJson: item.content_json,
+          isSupabase: true
+        }));
+
+        setAllModules(prev => {
+          // Keep all local ones, replace any prior supabase ones to avoid duplicates
+          const nonSupabase = prev.filter(m => !m.isSupabase);
+          return [...nonSupabase, ...mapped];
+        });
+        
+        setSupabaseSyncStatus('success');
+        if (manual) {
+          playSuccessChime();
+          alert(language === 'en'
+            ? `Successfully synchronized ${list.length} textbook records from your Supabase database! They are now integrated and marked with a ⚡ Supabase tag.`
+            : `ከእርስዎ ሱፓቤስ (Supabase) ዳታቤዝ ${list.length} መጽሐፍት በተሳካ ሁኔታ ተመሳስለዋል! መጽሐፍቱ በ ⚡ ምልክት ተለይተው ቀርበዋል።`);
+        }
+      } else {
+        setSupabaseSyncStatus('success');
+        if (manual) {
+          playSuccessChime();
+          alert(language === 'en'
+            ? 'Connected to Supabase! However, the "books" or "grade12_books" table is currently empty in your database, so we are displaying prebuilt Ethiopian curriculum books.'
+            : 'ከሱፓቤስ ጋር በትክክል ተገናኝቷል! ነገር ግን በ "books" ሰንጠረዥ ውስጥ ምንም መጽሐፍ ስላልተገኘ prebuilt መጽሐፍትን እያሳየን ነው።');
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      setSupabaseSyncStatus('err');
+      if (manual) {
+        playFailureChime();
+        setShowSupabaseGuide(true);
+      }
+    } finally {
+      setIsSupabaseLoading(false);
+    }
+  };
+
+  // Eagerly check / sync on mount
+  useEffect(() => {
+    const hasEnvKeys = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+    const hasLocalKeys = localStorage.getItem('ethiolearn_supabase_url') && localStorage.getItem('ethiolearn_supabase_key');
+    if (hasEnvKeys || hasLocalKeys) {
+      syncSupabase(false);
+    }
+  }, []);
+
+  // Merge books loaded from App.tsx prop automatically
+  useEffect(() => {
+    if (supabaseBooks && supabaseBooks.length > 0) {
+      const mapped: ModuleResource[] = supabaseBooks.map(item => ({
+        id: item.id || `sb_prop_${Date.now()}_${Math.random()}`,
+        title: item.title || 'Dynamic Book',
+        subject: item.subject || 'Academic',
+        grade: item.grade || 'Grade 12 New Curriculum',
+        chapters: Array.isArray(item.chapters) 
+          ? item.chapters 
+          : (typeof item.chapters === 'string' ? JSON.parse(item.chapters) : ['Chapter 1']),
+        pages: Number(item.pages || 150),
+        description: item.description || '',
+        languageSupport: item.language_support || item.languageSupport || 'Bilingual',
+        proRequired: item.pro_required ?? item.proRequired ?? false,
+        pdfUrl: item.pdf_url,
+        contentJson: item.content_json,
+        isSupabase: true
+      }));
+
+      setAllModules(prev => {
+        const nonSupabase = prev.filter(m => !m.isSupabase);
+        return [...nonSupabase, ...mapped];
+      });
+    }
+  }, [supabaseBooks]);
+
   // Filter modules
-  const filtered = PREBUILT_MODULES.filter(m => {
+  const filtered = allModules.filter(m => {
     const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           m.subject.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           m.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesGrade = selectedGrade === 'All' || m.grade === selectedGrade;
+    
+    let matchesGrade = false;
+    if (selectedGrade === 'All') {
+      matchesGrade = true;
+    } else if (selectedGrade === 'Grade 12') {
+      matchesGrade = m.grade === 'Grade 12';
+    } else if (selectedGrade === 'Grade 12 New Curriculum') {
+      matchesGrade = m.grade === 'Grade 12 New Curriculum';
+    } else {
+      matchesGrade = m.grade === selectedGrade;
+    }
     return matchesSearch && matchesGrade;
   });
 
@@ -449,6 +631,43 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
     }
   };
 
+  // Inline AI Tutor Chapter helper chat
+  const handleInlineAnswer = async () => {
+    if (!inlineAiQuestion.trim() || !activeModule) return;
+    setInlineAiLoading(true);
+    setInlineAiResponse('');
+    playClickChime();
+
+    const chapterContent = getChapterContent(activeModule.id, selectedChapter, activeModule.contentJson);
+    const contentSummary = `Book: ${activeModule.title}\nChapter: ${selectedChapter}\nIntro: ${chapterContent.intro}\nContent: ${chapterContent.sections.map(s => s.title + ': ' + s.body).join('\n')}`;
+
+    const systemPrompt = `You are the EthioLearn AI Tutor. You are helping an Ethiopian student read the active chapter of their textbook.\nActive textbook material context:\n${contentSummary}\nAnswer the student's question clearly, concisely, and encouragingly. Use local analogies (such as Ethiopia's rivers, cities, historical triumphs, agriculture) where helpful. Keep formatting neat.`;
+    
+    const messages = [
+      { role: 'user' as const, content: inlineAiQuestion }
+    ];
+
+    try {
+      await submitClaudeChat(messages, systemPrompt, apiKey || "no-key", {
+        onChunk: (chunk) => {
+          setInlineAiResponse(prev => prev + chunk);
+        },
+        onComplete: (fullText) => {
+          setInlineAiLoading(false);
+          setInlineAiResponse(fullText);
+          playSuccessChime();
+        },
+        onError: (err) => {
+          setInlineAiLoading(false);
+          setInlineAiResponse(`Error: ${err}`);
+        }
+      });
+    } catch (err: any) {
+      setInlineAiLoading(false);
+      setInlineAiResponse(`Tutor Connection Error: ${err.message}`);
+    }
+  };
+
   // Custom Quiz Engine handling
   const handleQuizAnswer = (optionIdx: number) => {
     if (selectedQuizOption !== null) return; // already selected
@@ -511,7 +730,7 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
           </div>
 
           <div className="flex bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-0.5 rounded-xl text-xs font-bold leading-none select-none">
-            {['All', 'Grade 12', 'University'].map(g => (
+            {['All', 'Grade 12', 'Grade 12 New Curriculum', 'University'].map(g => (
               <button
                 key={g}
                 onClick={() => { playClickChime(); setSelectedGrade(g); }}
@@ -525,6 +744,27 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
               </button>
             ))}
           </div>
+
+          <button
+            onClick={() => syncSupabase(true)}
+            disabled={isSupabaseLoading}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] uppercase tracking-wider font-bold border transition-all cursor-pointer ${
+              supabaseSyncStatus === 'success'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/25 dark:text-emerald-450 dark:border-emerald-900/60'
+                : supabaseSyncStatus === 'err'
+                ? 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400'
+                : 'bg-slate-50 hover:bg-slate-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 dark:border-zinc-800 text-slate-700 dark:text-zinc-350 dark:border-zinc-800'
+            }`}
+          >
+            <Database className={`w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ${isSupabaseLoading ? 'animate-spin' : ''}`} />
+            {isSupabaseLoading ? (
+              <span>Syncing...</span>
+            ) : supabaseSyncStatus === 'success' ? (
+              <span className="flex items-center gap-1">🟢 Supabase Live <RefreshCw className="w-2.5 h-2.5 animate-pulse" /></span>
+            ) : (
+              <span>🔌 Connect Supabase</span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -553,7 +793,12 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
                         {mod.grade}
                       </span>
                       
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5 font-sans">
+                        {mod.isSupabase && (
+                          <span className="text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20 rounded flex items-center gap-0.5 animate-pulse">
+                            <Database className="w-2.5 h-2.5 text-yellow-500" /> Supabase
+                          </span>
+                        )}
                         {hasPremiumBadge && (
                           <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 border rounded ${
                             isEligible 
@@ -651,8 +896,97 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
                   </div>
                 </div>
 
+                {/* Book e-Reader primary trigger button */}
+                <div className="pt-2 pb-1 border-t border-slate-100 dark:border-zinc-800 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      onClick={() => { playClickChime(); setIsReaderOpen(true); }}
+                      className="py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-extrabold uppercase tracking-widest cursor-pointer shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <BookOpenCheck className="w-5 h-5 shrink-0" />
+                      <span>📖 Read In-App</span>
+                    </button>
+
+                    {activeModule.pdfUrl ? (
+                      <button
+                        onClick={() => { playClickChime(); setViewingPdfMode(!viewingPdfMode); }}
+                        className={`py-4 rounded-2xl text-xs font-extrabold uppercase tracking-widest cursor-pointer shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 border-2 ${
+                          viewingPdfMode 
+                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 text-[#078930] dark:text-emerald-400 font-black' 
+                            : 'border-slate-200 dark:border-zinc-800 bg-slate-100 hover:bg-slate-205 text-slate-700 dark:text-zinc-200'
+                        }`}
+                      >
+                        <FileText className="w-5 h-5 shrink-0 animate-bounce" />
+                        <span>{viewingPdfMode ? '📚 Hide PDF Frame' : '📄 Open PDF'}</span>
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        className="py-4 bg-slate-104 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800/80 text-slate-400 dark:text-zinc-600 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed opacity-60"
+                      >
+                        <FileText className="w-5 h-5 shrink-0 opacity-40" />
+                        <span>No PDF File</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {activeModule.pdfUrl && (
+                    <div className="bg-slate-50 dark:bg-zinc-900/60 p-3 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 flex items-center justify-between text-xs">
+                      <div className="space-y-0.5 max-w-[70%]">
+                        <p className="font-bold text-[#078930] dark:text-emerald-404 flex items-center gap-1 text-[11px]">
+                          📥 Original PDF Detected
+                        </p>
+                        <p className="text-[10px] text-slate-400 dark:text-zinc-500 truncate">
+                          File: {activeModule.pdfUrl.split('/').pop() || 'Textbook Document'}
+                        </p>
+                      </div>
+                      <a
+                        href={activeModule.pdfUrl}
+                        target="_blank"
+                        rel="noreferrer referrer"
+                        className="px-3 py-1.5 bg-emerald-605 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                        onClick={() => playSuccessChime()}
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download</span>
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Standard embedded IFrame PDF presentation */}
+                  {viewingPdfMode && activeModule.pdfUrl && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3 overflow-hidden rounded-2xl border-2 border-emerald-650 bg-slate-900 text-white shadow-inner"
+                    >
+                      <div className="px-3 py-2 bg-emerald-800/20 border-b border-zinc-800 flex items-center justify-between text-xs font-bold text-emerald-450">
+                        <span className="truncate">📄 PDF View: {activeModule.title}</span>
+                        <button 
+                          onClick={() => setViewingPdfMode(false)}
+                          className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="relative w-full h-[550px] bg-slate-800">
+                        <iframe 
+                          src={`${activeModule.pdfUrl}#toolbar=1`}
+                          title={`PDF Textbook: ${activeModule.title}`}
+                          className="w-full h-full border-0"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <p className="text-[10px] text-center text-slate-400 dark:text-zinc-500 mt-1.5 font-sans">
+                    Optionally read the interactive chapter lessons directly, or preview & download the official textbook PDF.
+                  </p>
+                </div>
+
                 {/* AI Interactive buttons row */}
-                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800">
+                <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
                   <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-3.5">🎯 AI Modules Copilot Actions:</p>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -846,6 +1180,511 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
         </div>
 
       </div>
+
+      {/* ========================================================= */}
+      {/* 📖 PREMIUM IN-APP E-BOOK READER OVERLAY                  */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {isReaderOpen && activeModule && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className="fixed inset-0 z-50 bg-[#0a0b10]/95 backdrop-blur-sm flex flex-col items-center justify-center p-0 md:p-4 select-none"
+          >
+            <div 
+              className={`w-full h-full md:max-w-7xl md:h-[94vh] rounded-none md:rounded-3xl border shadow-2xl flex flex-col overflow-hidden transition-all duration-300 ${
+                readerTheme === 'light' 
+                  ? 'bg-slate-50 text-slate-900 border-slate-200' 
+                  : readerTheme === 'sepia' 
+                  ? 'bg-[#f4ecd8] text-[#3d2f1f] border-amber-250/50' 
+                  : 'bg-[#0f111a] text-zinc-200 border-zinc-800'
+              }`}
+            >
+              {/* E-Reader Title Header Control Bar */}
+              <div className="px-5 py-4 border-b flex flex-wrap items-center justify-between gap-4 bg-black/5 dark:bg-white/5">
+                <div className="flex items-center gap-3">
+                  <span className="p-2 bg-[#078930] text-white rounded-xl">
+                    <BookOpen className="w-5 h-5 animate-pulse" />
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                      EthioLearn eBook Reader
+                    </h4>
+                    <h3 className="text-sm font-serif font-black line-clamp-1">
+                      {activeModule.title}
+                    </h3>
+                  </div>
+                </div>
+
+                {/* E-Reader Controls Row */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  
+                  {/* Theme Selectors */}
+                  <div className="flex items-center bg-black/10 dark:bg-white/10 p-1 rounded-xl gap-1">
+                    <button
+                      onClick={() => { playClickChime(); setReaderTheme('light'); }}
+                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                        readerTheme === 'light' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Daylight Theme"
+                    >
+                      <Sun className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => { playClickChime(); setReaderTheme('sepia'); }}
+                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                        readerTheme === 'sepia' ? 'bg-[#3d2f1f]/20 text-[#3d2f1f] shadow-sm' : 'text-amber-700/60'
+                      }`}
+                      title="Sepia Vintage Theme"
+                    >
+                      <Type className="w-3.5 h-3.5 text-amber-900" />
+                    </button>
+                    <button
+                      onClick={() => { playClickChime(); setReaderTheme('dark'); }}
+                      className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer ${
+                        readerTheme === 'dark' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Midnight Theme"
+                    >
+                      <Moon className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Font Sizers */}
+                  <div className="flex items-center bg-black/10 dark:bg-white/10 px-2 py-1.5 rounded-xl gap-2 font-mono text-xs">
+                    <button 
+                      onClick={() => { playClickChime(); setReaderFontSize(p => Math.max(12, p - 1)); }} 
+                      className="px-1.5 font-bold hover:scale-110 active:scale-90 cursor-pointer"
+                    >
+                      A-
+                    </button>
+                    <span className="font-extrabold">{readerFontSize}px</span>
+                    <button 
+                      onClick={() => { playClickChime(); setReaderFontSize(p => Math.min(22, p + 1)); }} 
+                      className="px-1.5 font-bold hover:scale-110 active:scale-90 cursor-pointer"
+                    >
+                      A+
+                    </button>
+                  </div>
+
+                  {/* Close button */}
+                  <button
+                    onClick={() => { playClickChime(); setIsReaderOpen(false); }}
+                    className="p-2 hover:bg-red-500/10 text-slate-400 hover:text-red-500 rounded-xl transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Container - Left sidebar for Chapters Index & Glossary, Center/Right split for active text & AI Tutor */}
+              {(() => {
+                const currentChapterData = getChapterContent(activeModule.id, selectedChapter, activeModule.contentJson);
+                return (
+                  <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+                    
+                    {/* 1. Left Book Navigation Index Sidebar (3 Columns) */}
+                    <div className="lg:col-span-3 border-r p-4 overflow-y-auto space-y-5 bg-black/[0.02] dark:bg-white/[0.02] hidden lg:block">
+                      <div>
+                        <h4 className="text-[10px] font-bold uppercase text-slate-400 dark:text-zinc-500 tracking-widest mb-3">
+                          Table of Contents
+                        </h4>
+                        <div className="space-y-1.5">
+                          {activeModule.chapters.map((ch, idx) => {
+                            const isChSelected = selectedChapter === ch;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => { playClickChime(); setSelectedChapter(ch); }}
+                                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold leading-relaxed transition-colors cursor-pointer ${
+                                  isChSelected
+                                    ? 'bg-[#078930] text-white'
+                                    : 'hover:bg-slate-200/50 dark:hover:bg-zinc-850'
+                                }`}
+                              >
+                                {ch}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Micro Bilingual Glossary lookup */}
+                      <div className="pt-4 border-t border-slate-200/60 dark:border-zinc-800">
+                        <h4 className="text-[10px] font-bold uppercase text-[#078930] dark:text-emerald-400 tracking-widest mb-2 flex items-center gap-1">
+                          <HelpCircle className="w-3.5 h-3.5" /> Interactive Vocabulary
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400 mb-2 leading-relaxed">
+                          Tap highlighted study terminology inside textbook content to review explanation notes instantly.
+                        </p>
+                        <div className="bg-white/40 dark:bg-black/20 p-3 rounded-xl border space-y-2">
+                          <p className="text-[11px] font-extrabold italic">Featured Terminology:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentChapterData.keyTerms.map(kt => (
+                              <span 
+                                key={kt.term}
+                                onClick={() => alert(`"${kt.term}" (${kt.amharic})\n\nDefinition:\n${kt.definition}`)}
+                                className="text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 px-2 py-1 rounded-lg hover:bg-emerald-500/20 cursor-pointer transition-all font-mono"
+                              >
+                                {kt.term}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Middle Textbook Chapter Content canvas (6 Columns) */}
+                    <div className="lg:col-span-6 p-6 overflow-y-auto space-y-6 flex flex-col justify-between select-text" style={{ fontSize: `${readerFontSize}px` }}>
+                      
+                      {/* Active Page Header indicator */}
+                      <div className="space-y-4 font-sans">
+                        <div className="flex items-center justify-between text-xs text-slate-400 dark:text-zinc-500 font-mono border-b pb-2">
+                          <span>Curriculum Section Unit</span>
+                          <span>PAGE 12 OF {activeModule.pages}</span>
+                        </div>
+
+                        {/* Chapter Title Headings */}
+                        <div className="space-y-1">
+                          <h2 className="text-xl md:text-2xl font-serif font-black tracking-tight text-emerald-805 dark:text-emerald-400">
+                            {currentChapterData.title}
+                          </h2>
+                          <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed italic">
+                            {currentChapterData.intro}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Body Textbook Content rendering */}
+                      <div className="space-y-5 font-serif leading-relaxed text-justify">
+                        {currentChapterData.sections.map((sect, sIdx) => (
+                          <div key={sIdx} className="space-y-2">
+                            <h4 className="text-sm font-sans font-black uppercase text-slate-700 dark:text-zinc-200 tracking-tight">
+                              {sect.title}
+                            </h4>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {sect.body}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* ASCII Diagram Area */}
+                      {currentChapterData.asciiDiagram && (
+                        <div className="my-4 font-mono">
+                          <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-zinc-500 mb-2 font-sans">
+                            Fig 1.1 Structural System Flow:
+                          </p>
+                          <pre className="text-[10px] leading-tight p-3 bg-black/10 dark:bg-black/30 border border-emerald-800/10 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-xl overflow-x-auto select-none">
+                            {currentChapterData.asciiDiagram}
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* Formulas Blackboard Box */}
+                      {currentChapterData.formulas && (
+                        <div className="my-5 p-4 bg-slate-900 border border-zinc-805 text-neutral-100 rounded-2xl shadow-inner font-sans">
+                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 uppercase tracking-widest font-black border-b border-zinc-800 pb-2 mb-3">
+                            <span>📐 Essential Formulas & Constants</span>
+                          </div>
+                          <div className="space-y-3.5 text-xs">
+                            {currentChapterData.formulas?.map((frm, fIdx) => (
+                              <div key={fIdx} className="space-y-1">
+                                <p className="font-extrabold text-[#C8962E]">{frm.name}</p>
+                                <div className="p-2 bg-black/40 rounded-lg text-emerald-400 font-mono text-center my-1 select-all font-bold">
+                                  {frm.formula}
+                                </div>
+                                <p className="text-[11px] text-neutral-400 leading-snug">{frm.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ministry Exam Alert Card */}
+                      {currentChapterData.examAlert && (
+                        <div className="p-4 bg-rose-500/10 border-l-4 border-rose-500 text-rose-800 dark:text-rose-400 rounded-r-xl space-y-1.5 font-sans leading-relaxed">
+                          <div className="flex items-center gap-1.5 text-xs font-black uppercase text-rose-600 dark:text-rose-400">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            <span>National Exam Pitfalls Warning</span>
+                          </div>
+                          <p className="text-xs leading-normal">
+                            {currentChapterData.examAlert}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Sticky bottom page controls */}
+                      <div className="pt-6 border-t mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs">
+                        <p className="text-slate-400">
+                          Bilingual study tools strictly compliant with Ministry standards.
+                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="font-bold text-slate-500 dark:text-zinc-400">Fully Dynamic Reader</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* 3. Right Sidebar - AI Study Assistant Chatbot Interactive Pane (3 Columns) */}
+                    <div className="lg:col-span-3 border-l p-4 flex flex-col justify-between bg-black/[0.01] dark:bg-white/[0.01]">
+                      
+                      <div className="space-y-4 flex-1 flex flex-col overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="border-b pb-2">
+                          <h4 className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 tracking-widest flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5" /> Direct AI Textbook Tutor
+                          </h4>
+                          <p className="text-[10px] text-slate-500 dark:text-zinc-400 leading-tight">
+                            Curious about an equation, detail or translation? Ask our tutor to explain it using simple terms.
+                          </p>
+                        </div>
+
+                        {/* Tutor Chat Log display stage */}
+                        <div className="flex-1 overflow-y-auto p-2 bg-black/5 dark:bg-black/35 rounded-2xl border space-y-3.5 min-h-[140px] max-h-[360px] text-xs leading-relaxed select-text font-sans">
+                          {inlineAiResponse ? (
+                            <div className="space-y-2">
+                              <div className="p-2.5 bg-[#078930]/10 border border-[#078930]/20 rounded-xl text-emerald-805 dark:text-emerald-300">
+                                <p className="font-extrabold text-[10px] uppercase text-emerald-700">Tutor Response:</p>
+                                <p className="mt-1 leading-relaxed capitalize whitespace-pre-wrap">{inlineAiResponse}</p>
+                              </div>
+                            </div>
+                          ) : inlineAiLoading ? (
+                            <div className="flex flex-col items-center justify-center h-full py-8 text-center space-y-2 text-zinc-400">
+                              <div className="w-5 h-5 border-2 border-[#078930] border-t-transparent rounded-full animate-spin" />
+                              <p className="text-[10px] font-mono animate-pulse">Reading pages, querying concepts...</p>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center h-full py-8 text-center text-slate-450 dark:text-zinc-500 italic space-y-1">
+                              <Bot className="w-7 h-7 mb-1 text-slate-350 animate-bounce" />
+                              <p>Ask anything about this chapter!</p>
+                              <p className="text-[9px] text-slate-400 dark:text-zinc-650 tracking-tight not-italic">e.g., "Give me a simple real-life analogy for Cardinal Utility."</p>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                      {/* Query input panel */}
+                      <div className="pt-3 border-t border-slate-200/60 dark:border-zinc-800 space-y-2 font-sans">
+                        <textarea
+                          value={inlineAiQuestion}
+                          onChange={(e) => setInlineAiQuestion(e.target.value)}
+                          placeholder="Ask the AI Tutor about this chapter..."
+                          className="w-full p-2 text-xs border rounded-xl bg-white dark:bg-zinc-900 focus:ring-1 focus:ring-emerald-500 outline-none resize-none h-14"
+                        />
+                        
+                        <button
+                          onClick={handleInlineAnswer}
+                          disabled={inlineAiLoading || !inlineAiQuestion.trim()}
+                          className="w-full py-2 bg-[#078930] hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-[10px] font-extrabold uppercase tracking-wider cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                        >
+                          <Bot className="w-3.5 h-3.5 text-white" />
+                          <span>Ask AI Tutor</span>
+                        </button>
+                        {inlineAiResponse && (
+                          <button 
+                            onClick={() => setInlineAiResponse('')}
+                            className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 underline font-mono cursor-pointer block"
+                          >
+                            Clear Chat Response
+                          </button>
+                        )}
+                      </div>
+
+                    </div>
+
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================= */}
+      {/* 🔌 SUPABASE WIZARD SETUP GUIDE MODAL                      */}
+      {/* ========================================================= */}
+      <AnimatePresence>
+        {showSupabaseGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 select-none"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white dark:bg-[#0c0d12] border border-slate-200 dark:border-zinc-805 rounded-3xl p-6 md:p-8 max-w-2xl w-full shadow-2xl space-y-6 overflow-y-auto max-h-[90vh]"
+            >
+              <div className="flex items-center justify-between border-b pb-4">
+                <div className="flex items-center gap-2.5">
+                  <Database className="w-5 h-5 text-emerald-600 animate-bounce" />
+                  <h3 className="font-serif font-black text-lg text-slate-900 dark:text-zinc-100">
+                    Connect Your Supabase Database
+                  </h3>
+                </div>
+                <button
+                  onClick={() => { playClickChime(); setShowSupabaseGuide(false); }}
+                  className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-xs leading-relaxed text-slate-650 dark:text-zinc-300">
+                <p className="font-semibold text-slate-800 dark:text-neutral-200">
+                  EthioLearn includes a built-in Supabase client ready to fetch Grade 12 textbooks dynamically directly from your cloud table. To configure this integration, please follow these steps:
+                </p>
+
+                <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20 space-y-2">
+                  <p className="font-black text-[#078930] dark:text-emerald-400">Step 1: Set up Environmental Secrets</p>
+                  <p className="text-[11px]">
+                    Go to your **Secrets/Environment Settings** panel inside your AI Studio builder and declare:
+                  </p>
+                  <div className="p-2.5 bg-black/5 dark:bg-black/35 rounded-xl text-[10px] font-mono leading-relaxed space-y-1 text-slate-700 dark:text-zinc-300 select-all">
+                    <p>VITE_SUPABASE_URL = "https://your-project-ref.supabase.co"</p>
+                    <p>VITE_SUPABASE_ANON_KEY = "your-anon-key-here"</p>
+                  </div>
+                  <p className="text-[10px] italic text-slate-400">
+                    *After saving the variables, restart the server for the connection to initiate.*
+                  </p>
+                </div>
+
+                <div className="bg-slate-100 dark:bg-zinc-900 p-4 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-800 space-y-3">
+                  <p className="font-black text-emerald-600 dark:text-emerald-400">⚡ Direct Supabase Connection Form</p>
+                  <p className="text-[11px] text-slate-500">
+                    If you don't want to use environment variables, paste your Supabase keys directly below to connect instantly.
+                  </p>
+                  <div className="space-y-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">SUPABASE URL</label>
+                      <input
+                        type="text"
+                        value={supabaseUrlInput}
+                        onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                        placeholder="https://abcdefghijklmnopqrst.supabase.co"
+                        className="w-full p-2 rounded-xl bg-white dark:bg-black border border-slate-300 dark:border-zinc-800 text-xs text-slate-805 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">SUPABASE ANON KEY</label>
+                      <input
+                        type="password"
+                        value={supabaseKeyInput}
+                        onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                        placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                        className="w-full p-2 rounded-xl bg-white dark:bg-black border border-slate-300 dark:border-zinc-805 text-xs text-slate-805 dark:text-zinc-200 outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      {localStorage.getItem('ethiolearn_supabase_url') && (
+                        <button
+                          onClick={() => {
+                            clearSupabaseCredentials();
+                            setSupabaseUrlInput('');
+                            setSupabaseKeyInput('');
+                            playClickChime();
+                            alert('Stored Supabase credentials cleared. Falling back to default system settings.');
+                          }}
+                          className="px-3 py-1 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
+                        >
+                          Clear Saved Keys
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (!supabaseUrlInput.trim() || !supabaseKeyInput.trim()) {
+                            alert('Please fill out both fields.');
+                            return;
+                          }
+                          saveSupabaseCredentials(supabaseUrlInput, supabaseKeyInput);
+                          playSuccessChime();
+                          alert('Supabase credentials saved successfully to browser storage! Testing connection now.');
+                          syncSupabase(true);
+                        }}
+                        className="px-3 py-1 bg-[#078930] text-white hover:bg-emerald-700 text-[11px] font-bold rounded-lg transition-all cursor-pointer"
+                      >
+                        Save & Test Connection
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <p className="font-black text-[#078930] dark:text-emerald-405 flex items-center gap-1">
+                    🟢 Step 2: Run Table Creation in Supabase Console
+                  </p>
+                  <p className="text-[11px]">
+                    Navigate to your Supabase project dashboard, open the **SQL Editor**, and run this migration script:
+                  </p>
+                  
+                  <textarea
+                    readOnly
+                    className="w-full text-[10px] font-mono leading-relaxed bg-slate-900 text-neutral-150 p-3 rounded-2xl h-44 border border-zinc-800 focus:outline-none select-all focus:ring-0"
+                    value={`-- Create books table matching EthioLearn schema
+CREATE TABLE books (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  grade TEXT NOT NULL,
+  chapters JSONB NOT NULL,
+  pages INT DEFAULT 150,
+  description TEXT,
+  language_support TEXT DEFAULT 'Bilingual',
+  pro_required BOOLEAN DEFAULT false,
+  pdf_url TEXT,
+  content_json TEXT
+);
+
+-- Seed with a sample Grade 12 New Curriculum Book
+INSERT INTO books (id, title, subject, grade, chapters, pages, description, language_support, pro_required)
+VALUES (
+  'g12_temp_civics',
+  'Grade 12 Citizenship Education New Curriculum',
+  'Civics',
+  'Grade 12 New Curriculum',
+  '["Chapter 1: Democratic Values", "Chapter 2: Constitution and Rule of Law"]'::jsonb,
+  140,
+  'Dynamic textbook loaded straight from my custom Supabase cloud database!',
+  'Bilingual',
+  false
+);`}
+                  />
+                  <p className="text-[9px] text-center text-slate-400">
+                    (Click inside the black box to select all, then paste into your Supabase panel)
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-4">
+                <p className="text-[10px] text-slate-400">
+                  EthioLearn client relies on stable web integrations.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { playClickChime(); setShowSupabaseGuide(false); }}
+                    className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => { setShowSupabaseGuide(false); syncSupabase(true); }}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-extrabold tracking-wider uppercase cursor-pointer shadow-md"
+                  >
+                    Test Connection
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -20,20 +20,29 @@ async function startServer() {
     try {
       const { messages, system, userApiKey, model } = req.body;
       
-      // Prioritize client-provided API key from settings, then fallback to server env
-      const apiKey = userApiKey || req.headers['x-api-key'] || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY; 
+      // Clean up string placeholder keys from frontend
+      let resolvedUserKey = userApiKey;
+      if (typeof resolvedUserKey === 'string') {
+        const cleaned = resolvedUserKey.trim().toLowerCase();
+        if (!cleaned || ['no-key', 'no-api-key', 'undefined', 'null', 'no_key', 'none'].includes(cleaned)) {
+          resolvedUserKey = undefined;
+        }
+      }
       
-      if (!apiKey) {
+      // Prioritize client-provided API key from settings, then fallback to server env
+      const apiKey = resolvedUserKey || req.headers['x-api-key'] || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY; 
+      
+      if (!apiKey || apiKey === 'no-key' || apiKey === 'no-api-key') {
         return res.status(401).json({ 
           error: 'Missing API Key. Please provide an API key in Onboarding or Settings to enable AI tutoring features.' 
         });
       }
 
       // Check if we can use native Google Gemini API directly (if key is Google API Key or fallback is used)
-      const useGeminiDirectly = apiKey.startsWith('AIzaSy') || (!userApiKey && process.env.GEMINI_API_KEY && apiKey === process.env.GEMINI_API_KEY);
+      const useGeminiDirectly = apiKey.startsWith('AIzaSy') || (!!process.env.GEMINI_API_KEY && apiKey === process.env.GEMINI_API_KEY);
 
       // Check if we can use Groq API directly (if key is a Groq Key or fallback is used)
-      const useGroqDirectly = apiKey.startsWith('gsk_') || (!userApiKey && process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
+      const useGroqDirectly = apiKey.startsWith('gsk_') || (!!process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
 
       if (useGeminiDirectly) {
         // Configure chunks for Server-Sent Events (SSE) streaming helper

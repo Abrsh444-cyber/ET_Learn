@@ -1,0 +1,83 @@
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+let supabaseInstance: SupabaseClient | null = null;
+
+/**
+ * Save Supabase credentials to localStorage for in-app pairing
+ */
+export function saveSupabaseCredentials(url: string, key: string) {
+  localStorage.setItem('ethiolearn_supabase_url', url.trim());
+  localStorage.setItem('ethiolearn_supabase_key', key.trim());
+  supabaseInstance = null; // Reset instance to force recreation with new keys
+}
+
+/**
+ * Clear stored Supabase credentials
+ */
+export function clearSupabaseCredentials() {
+  localStorage.removeItem('ethiolearn_supabase_url');
+  localStorage.removeItem('ethiolearn_supabase_key');
+  supabaseInstance = null;
+}
+
+/**
+ * Lazily configures and retrieves the Supabase client instance.
+ * Gracefully returns null if keys are not set, preventing startup crashes.
+ */
+export function getSupabase(): SupabaseClient | null {
+  if (supabaseInstance) return supabaseInstance;
+
+  let url = localStorage.getItem('ethiolearn_supabase_url');
+  let anonKey = localStorage.getItem('ethiolearn_supabase_key');
+
+  if (!url || !anonKey) {
+    url = (import.meta as any).env.VITE_SUPABASE_URL;
+    anonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
+  }
+
+  if (!url || !anonKey || typeof url !== 'string' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    // Graceful fallback when environment keys are missing or invalid
+    return null;
+  }
+
+  try {
+    supabaseInstance = createClient(url, anonKey);
+    return supabaseInstance;
+  } catch (error) {
+    console.error('Failed to initialize Supabase client:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch Grade 12 books from Supabase if connected
+ */
+export async function fetchSupabaseBooks(): Promise<any[]> {
+  const client = getSupabase();
+  if (!client) return [];
+
+  try {
+    // Attempt to select from "grade12_books" or "books"
+    const { data, error } = await client
+      .from('books')
+      .select('*')
+      .order('title', { ascending: true });
+
+    if (error) {
+      // Try fallback table alternative
+      const { data: fallbackData, error: fallbackError } = await client
+        .from('grade12_books')
+        .select('*');
+      
+      if (fallbackError) {
+        console.warn('Supabase connected, but tables "books" or "grade12_books" were not found. Falling back to local catalog.');
+        return [];
+      }
+      return fallbackData || [];
+    }
+    return data || [];
+  } catch (err) {
+    console.error('Error fetching from Supabase:', err);
+    return [];
+  }
+}

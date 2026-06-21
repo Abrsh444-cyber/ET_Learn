@@ -26,6 +26,7 @@ import { getEthiopianDate } from './utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from './utils/audio';
 import { initAuth, googleSignIn, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
 import { User as FirebaseUser } from 'firebase/auth';
+import { supabase } from './utils/supabase';
 
 // Helper functions for real study streak calculation based on actual calendar days
 function recordStudyActivity() {
@@ -166,6 +167,9 @@ export default function App() {
   // Toast systems
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Supabase books sync state
+  const [supabaseBooks, setSupabaseBooks] = useState<any[]>([]);
+
   // Ethiopian Calendar support
   const [ethDate, setEthDate] = useState({ day: 1, monthName: "መስከረም", year: 2016, formatted: "መስከረም 1, 2016" });
 
@@ -265,6 +269,32 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Fetch curriculum books list from 'books' table in Supabase
+  useEffect(() => {
+    async function fetchBooks() {
+      if (!supabase) {
+        console.log('New Supabase client is not initialized (missing environment keys).');
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('books')
+          .select('*')
+          .order('title', { ascending: true });
+
+        if (error) {
+          console.warn('Error fetching books list from "books" table in App.tsx:', error);
+        } else if (data) {
+          setSupabaseBooks(data);
+          console.log('Successfully fetched curriculum books list from Supabase in App.tsx:', data);
+        }
+      } catch (err) {
+        console.error('Failed to coordinate Supabase request in App.tsx:', err);
+      }
+    }
+    fetchBooks();
   }, []);
 
   const triggerPWAInstall = async () => {
@@ -588,6 +618,7 @@ export default function App() {
                 language={language}
                 onNavigate={(p) => setCurrentPage(p as any)}
                 onStudyAction={handleRecordStudyAction}
+                supabaseBooks={supabaseBooks}
               />
             )}
 
