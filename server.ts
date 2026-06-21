@@ -44,6 +44,12 @@ async function startServer() {
       // Check if we can use Groq API directly (if key is a Groq Key or fallback is used)
       const useGroqDirectly = apiKey.startsWith('gsk_') || (!!process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
 
+      // Check if we can use native Anthropic API directly
+      const useAnthropicDirectly = apiKey.startsWith('sk-ant-');
+
+      // Check if we can use native OpenAI API directly
+      const useOpenAiDirectly = (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-') && !apiKey.startsWith('sk-ant-') && !apiKey.startsWith('gsk_'));
+
       if (useGeminiDirectly) {
         // Configure chunks for Server-Sent Events (SSE) streaming helper
         res.setHeader('Content-Type', 'text/event-stream');
@@ -103,6 +109,168 @@ async function startServer() {
         }
 
         res.write('data: [DONE]\n\n');
+        res.end();
+        return;
+      }
+
+      if (useAnthropicDirectly) {
+        console.log('[EthioLearn Server] Routing chat request directly to Anthropic API');
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+            system: system || undefined,
+            max_tokens: 2000,
+            stream: true,
+          })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          console.error('Anthropic API returned error:', errBody);
+          return res.status(response.status).json({ error: errBody });
+        }
+
+        if (!response.body) {
+          return res.status(500).json({ error: 'Anthropic reply is empty.' });
+        }
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+
+            if (cleanLine.startsWith('data:')) {
+              const rawData = cleanLine.substring(5).trim();
+              if (rawData === '[DONE]') {
+                res.write('data: [DONE]\n\n');
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(rawData);
+                let content = '';
+                if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
+                  content = parsed.delta.text;
+                } else if (parsed.type === 'message_start' && parsed.message?.content?.[0]?.text) {
+                  content = parsed.message.content[0].text;
+                }
+                if (content) {
+                  const legacyChunk = {
+                    type: 'content_block_delta',
+                    delta: { text: content }
+                  };
+                  res.write(`data: ${JSON.stringify(legacyChunk)}\n\n`);
+                }
+              } catch (e) {
+                // Ignore partial slices
+              }
+            }
+          }
+        }
+        res.end();
+        return;
+      }
+
+      if (useOpenAiDirectly) {
+        console.log('[EthioLearn Server] Routing chat request directly to OpenAI API');
+        const openRouterMessages = [];
+        if (system) {
+          openRouterMessages.push({ role: 'system', content: system });
+        }
+        if (Array.isArray(messages)) {
+          const mapped = messages.map((m: any) => ({ role: m.role, content: m.content || '' }));
+          openRouterMessages.push(...mapped);
+        }
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: openRouterMessages,
+            stream: true,
+            max_tokens: 2000,
+          })
+        });
+
+        if (!response.ok) {
+          const errBody = await response.text();
+          console.error('OpenAI API returned error:', errBody);
+          return res.status(response.status).json({ error: errBody });
+        }
+
+        if (!response.body) {
+          return res.status(500).json({ error: 'OpenAI response body is empty.' });
+        }
+
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            if (!cleanLine) continue;
+
+            if (cleanLine.startsWith('data:')) {
+              const rawData = cleanLine.substring(5).trim();
+              if (rawData === '[DONE]') {
+                res.write('data: [DONE]\n\n');
+                continue;
+              }
+
+              try {
+                const parsed = JSON.parse(rawData);
+                const content = parsed.choices?.[0]?.delta?.content;
+                if (content) {
+                  const legacyChunk = {
+                    type: 'content_block_delta',
+                    delta: { text: content }
+                  };
+                  res.write(`data: ${JSON.stringify(legacyChunk)}\n\n`);
+                }
+              } catch (e) {
+                // Ignore partial slices
+              }
+            }
+          }
+        }
         res.end();
         return;
       }

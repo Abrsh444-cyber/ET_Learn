@@ -631,6 +631,66 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
     }
   };
 
+  const getOfflineTutorResponse = (question: string, content: any): string => {
+    const qLower = question.toLowerCase();
+    
+    // Find matching terms
+    let termMatches = '';
+    if (content.keyTerms && content.keyTerms.length > 0) {
+      const matches = content.keyTerms.filter((kt: any) => {
+        const term = (kt.term || '').toLowerCase();
+        return qLower.includes(term) || term.split(' ').some((w: string) => w.length > 3 && qLower.includes(w));
+      });
+      if (matches.length > 0) {
+        termMatches = `#### 🔑 Vocabulary & Key Terms Found:\n` + matches.map((m: any) => `* **${m.term}**${m.amharic ? ` (${m.amharic})` : ''}: ${m.definition}`).join('\n') + `\n\n`;
+      }
+    }
+
+    // Find matching sections
+    let sectionMatches = '';
+    if (content.sections && content.sections.length > 0) {
+      const matches = content.sections.filter((sec: any) => {
+        const title = (sec.title || '').toLowerCase();
+        const body = (sec.body || '').toLowerCase();
+        return qLower.includes(title) || title.split(/[\s,.-]+/).some((w: string) => w.length > 4 && qLower.includes(w)) ||
+               body.split(/[\s,.-]+/).some((w: string) => w.length > 5 && qLower.includes(w));
+      });
+      if (matches.length > 0) {
+        sectionMatches = `#### 📖 Textbook Content Breakdown Details:\n` + matches.map((m: any) => `* **${m.title}**\n  ${m.body}`).join('\n\n') + `\n\n`;
+      }
+    }
+
+    // Formulas if any
+    let formulaMatches = '';
+    if (content.formulas && content.formulas.length > 0) {
+      const matches = content.formulas.filter((f: any) => {
+        const name = (f.name || '').toLowerCase();
+        return qLower.includes(name) || qLower.includes('formula') || qLower.includes('calculate') || qLower.includes('equation');
+      });
+      if (matches.length > 0) {
+        formulaMatches = `#### 🧮 Important Equations Explained:\n` + matches.map((m: any) => `* **${m.name}**: \`${m.formula}\` — *${m.description}*`).join('\n') + `\n\n`;
+      }
+    }
+
+    // Default summaries if zero specific matched items
+    let defaultResponse = '';
+    if (!termMatches && !sectionMatches && !formulaMatches) {
+      defaultResponse = `#### 📖 Chapter Overview:\n${content.intro || 'This chapter introduces essential topics from the curriculum syllabus.'}\n\n* **Curriculum Focus**: Ethiopian National Exam Preparatory Content.\n* **Available Topics** in this chapter: \n  ${(content.sections || []).map((s: any) => `  - *${s.title}*`).join('\n')}\n\n`;
+    }
+
+    const header = `### 🤖 EthioLearn Local Study Buddy (Offline Mode)
+*Your live tutor is currently offline (Check your API settings/internet status).* Let's explore the cached textbook information for your question!
+
+---
+
+`;
+
+    const footer = `---
+💡 **Study Tip**: You can customize or activate a live interactive AI Tutor at any time by configuring a valid **API Key** or server fallback in the **Settings** menu at the top-right corner. Keep practicing! 🚀`;
+
+    return `${header}${termMatches}${sectionMatches}${formulaMatches}${defaultResponse}${footer}`;
+  };
+
   // Inline AI Tutor Chapter helper chat
   const handleInlineAnswer = async () => {
     if (!inlineAiQuestion.trim() || !activeModule) return;
@@ -658,13 +718,17 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
           playSuccessChime();
         },
         onError: (err) => {
+          console.warn('AI Tutor Live error, falling back locally:', err);
+          const offlineAnswer = getOfflineTutorResponse(inlineAiQuestion, chapterContent);
           setInlineAiLoading(false);
-          setInlineAiResponse(`Error: ${err}`);
+          setInlineAiResponse(offlineAnswer);
         }
       });
     } catch (err: any) {
+      console.warn('AI Tutor Connection thrown error, falling back locally:', err);
+      const offlineAnswer = getOfflineTutorResponse(inlineAiQuestion, chapterContent);
       setInlineAiLoading(false);
-      setInlineAiResponse(`Tutor Connection Error: ${err.message}`);
+      setInlineAiResponse(offlineAnswer);
     }
   };
 
