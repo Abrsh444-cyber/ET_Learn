@@ -27,6 +27,7 @@ import { playClickChime, playSuccessChime, playFailureChime } from './utils/audi
 import { initAuth, googleSignIn, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
 import { User as FirebaseUser } from 'firebase/auth';
 import { supabase } from './utils/supabase';
+import { initSupabaseConfig } from './utils/supabaseClient';
 
 // Helper functions for real study streak calculation based on actual calendar days
 function recordStudyActivity() {
@@ -266,6 +267,11 @@ export default function App() {
       }
     );
     return () => unsubscribe();
+  }, []);
+
+  // Load server-side configured Supabase secrets automatically at startup
+  useEffect(() => {
+    initSupabaseConfig();
   }, []);
 
   // PWA standard installer hook

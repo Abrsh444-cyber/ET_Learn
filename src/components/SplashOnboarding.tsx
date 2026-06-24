@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile } from '../types';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
+import { googleSignIn } from '../utils/workspace';
 import { 
   Key, User, Landmark, GraduationCap, ArrowRight, Info, Eye, EyeOff, 
   Mail, Lock, LogIn, UserPlus, ArrowLeft, ShieldAlert, CheckCircle 
@@ -111,6 +112,71 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       }
     }
   }, [initialProfile]);
+
+  const handleGoogleAuth = async () => {
+    try {
+      setAuthError(null);
+      playClickChime();
+      const res = await googleSignIn();
+      if (res) {
+        const { user } = res;
+        const userEmail = user.email || '';
+        const userName = user.displayName || 'Scholar';
+        
+        // Check if account already exists
+        const found = registeredAccounts.find(
+          acc => acc.email.toLowerCase() === userEmail.toLowerCase()
+        );
+        
+        if (found) {
+          // Session exists! Log in instantly
+          localStorage.setItem('ethiolearn_active_email', found.email);
+          playSuccessChime();
+          onComplete({ ...found.profile, isRegistered: true });
+        } else {
+          // New account! Create a profile with smart Google defaults
+          const profile: StudentProfile = {
+            name: userName,
+            email: userEmail,
+            university: "Addis Ababa University",
+            year: "University",
+            subjects: [
+              "Emerging Technologies",
+              "Introduction to Economics",
+              "General Biology",
+              "Communicative English",
+              "Moral and Civic Education"
+            ],
+            claudeApiKey: "",
+            dailyGoalHours: 2,
+            theme: 'dark',
+            language: 'both',
+            avatar: 'champion',
+            isRegistered: true,
+            unregisteredAICredits: 5
+          };
+          
+          const newAccount: AccountInfo = {
+            email: userEmail,
+            passwordEncrypted: "google_authenticated",
+            rememberMe: true,
+            profile
+          };
+          
+          const updated = [...registeredAccounts, newAccount];
+          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
+          localStorage.setItem('ethiolearn_active_email', userEmail);
+          
+          playSuccessChime();
+          onComplete(profile);
+        }
+      }
+    } catch (err: any) {
+      console.error('Google onboarding auth failed:', err);
+      setAuthError('Google Sign-In was canceled or encountered an issue. Please try again.');
+      playFailureChime();
+    }
+  };
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -876,6 +942,21 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               >
                 <LogIn className="w-4 h-4 text-[#0d0d0d]" /> Enter Campus
               </button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-zinc-800"></div>
+                <span className="flex-shrink mx-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">or</span>
+                <div className="flex-grow border-t border-zinc-800"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full py-3 bg-[#111111] hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-200 rounded-lg text-xs font-serif font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
+              >
+                <span className="text-sm">🎯</span>
+                <span>Continue with Google</span>
+              </button>
             </form>
 
             <div className="text-center pt-2 border-t border-zinc-900/60">
@@ -1088,6 +1169,21 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 className="w-full py-3.5 bg-gradient-to-r from-[#C8962E] to-[#1A7A3C] text-black font-serif font-extrabold text-xs tracking-wider uppercase rounded-lg cursor-pointer flex items-center justify-center gap-2 shadow"
               >
                 Register & Enter Campus <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-zinc-800"></div>
+                <span className="flex-shrink mx-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">or</span>
+                <div className="flex-grow border-t border-zinc-800"></div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleAuth}
+                className="w-full py-3 bg-[#111111] hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-200 rounded-lg text-xs font-serif font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
+              >
+                <span className="text-sm">🎯</span>
+                <span>Register instantly with Google</span>
               </button>
             </form>
 

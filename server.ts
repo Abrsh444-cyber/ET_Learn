@@ -9,6 +9,9 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { createClient } from '@supabase/supabase-js';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 dotenv.config();
 
@@ -33,10 +36,10 @@ async function startServer() {
   const isValidServiceKey = (key: string): boolean => {
     if (!key) return false;
     const k = key.trim();
-    if (k.length < 15) return false;
+    if (k.length < 10) return false;
     const lower = k.toLowerCase();
-    if (['no-key', 'no-api-key', 'undefined', 'null', 'none'].includes(lower)) return false;
-    return k.startsWith('sk-') || k.startsWith('AIzaSy') || k.startsWith('gsk_');
+    if (['no-key', 'no-api-key', 'undefined', 'null', 'none', 'no_key', 'empty'].includes(lower)) return false;
+    return true; // Accept any key structure to maximize compatibility with all academic AI integrations
   };
 
   app.use(express.json({ limit: '50mb' }));
@@ -59,6 +62,164 @@ async function startServer() {
         return res.json({ success: true, message: 'Master API key synced successfully.' });
       }
       return res.status(400).json({ error: 'Invalid key format for master sync.' });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Supabase proxy endpoint to backup/restore study metrics
+  app.post('/api/db/sync-supabase', async (req, res) => {
+    try {
+      const { url, key, email, action, payload } = req.body;
+      
+      const targetUrl = (url || process.env.VITE_SUPABASE_URL || '').trim();
+      const targetKey = (key || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+      
+      if (!targetUrl || !targetKey) {
+        return res.status(400).json({ error: 'Supabase URL and Anon Key are required.' });
+      }
+      if (!email) {
+        return res.status(400).json({ error: 'Student email is required for cloud mapping.' });
+      }
+
+      const supabase = createClient(targetUrl, targetKey);
+      
+      if (action === 'backup') {
+        if (!payload) {
+          return res.status(400).json({ error: 'Backup payload data is missing.' });
+        }
+        
+        const { error } = await supabase
+          .from('ethiolearn_sync')
+          .upsert({ email: email.toLowerCase(), data: payload, updated_at: new Date().toISOString() }, { onConflict: 'email' });
+        
+        if (error) {
+          console.error('[Supabase Backup Error]:', error);
+          return res.status(500).json({ 
+            error: error.message, 
+            details: 'Could not write to ethiolearn_sync table. Make sure you created the table with columns: email (primary key, text) and data (jsonb).' 
+          });
+        }
+        
+        return res.json({ success: true, message: 'Campus progress backed up successfully to Supabase!' });
+      } else if (action === 'restore') {
+        const { data, error } = await supabase
+          .from('ethiolearn_sync')
+          .select('data')
+          .eq('email', email.toLowerCase())
+          .maybeSingle();
+        
+        if (error) {
+          console.error('[Supabase Restore Error]:', error);
+          return res.status(500).json({ error: error.message });
+        }
+        if (!data) {
+          return res.status(404).json({ error: 'No backup records found for this student email.' });
+        }
+        
+        return res.json({ success: true, payload: data.data });
+      } else {
+        return res.status(400).json({ error: 'Invalid sync action. Choose action: "backup" or "restore"' });
+      }
+    } catch (e: any) {
+      console.error('[Supabase Sync Handler Error]:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // AWS DynamoDB proxy endpoint to backup/restore study metrics
+  app.post('/api/db/sync-aws', async (req, res) => {
+    try {
+      const { region, accessKeyId, secretAccessKey, tableName, email, action, payload } = req.body;
+      
+      const targetRegion = (region || process.env.AWS_REGION || 'us-east-1').trim();
+      const targetAccessKeyId = (accessKeyId || process.env.AWS_ACCESS_KEY_ID || '').trim();
+      const targetSecretAccessKey = (secretAccessKey || process.env.AWS_SECRET_ACCESS_KEY || '').trim();
+      const targetTable = (tableName || 'ethiolearn_sync').trim();
+
+      if (!targetAccessKeyId || !targetSecretAccessKey) {
+        return res.status(400).json({ error: 'AWS Access Key ID and Secret Access Key are required.' });
+      }
+      if (!email) {
+        return res.status(400).json({ error: 'Student email is required for AWS mapping.' });
+      }
+
+      const client = new DynamoDBClient({
+        region: targetRegion,
+        credentials: {
+          accessKeyId: targetAccessKeyId,
+          secretAccessKey: targetSecretAccessKey
+        }
+      });
+      const ddbDocClient = DynamoDBDocumentClient.from(client);
+
+      if (action === 'backup') {
+        if (!payload) {
+          return res.status(400).json({ error: 'Backup payload data is missing.' });
+        }
+
+        const params = {
+          TableName: targetTable,
+          Item: {
+            email: email.toLowerCase(),
+            data: JSON.stringify(payload),
+            updated_at: new Date().toISOString()
+          }
+        };
+
+        try {
+          await ddbDocClient.send(new PutCommand(params));
+        } catch (err: any) {
+          console.error('[AWS DynamoDB Put Error]:', err);
+          return res.status(500).json({ 
+            error: err.message, 
+            details: `Could not write to DynamoDB table "${targetTable}". Verify that the table exists, has a Partition Key named "email" (string), and credentials have DynamoDB permissions.` 
+          });
+        }
+
+        return res.json({ success: true, message: 'Campus progress backed up successfully to Amazon AWS!' });
+      } else if (action === 'restore') {
+        const params = {
+          TableName: targetTable,
+          Key: {
+            email: email.toLowerCase()
+          }
+        };
+
+        try {
+          const result = await ddbDocClient.send(new GetCommand(params));
+          if (!result.Item) {
+            return res.status(404).json({ error: 'No backup records found for this student email in DynamoDB.' });
+          }
+          
+          let parsedData = result.Item.data;
+          if (typeof parsedData === 'string') {
+            parsedData = JSON.parse(parsedData);
+          }
+
+          return res.json({ success: true, payload: parsedData });
+        } catch (err: any) {
+          console.error('[AWS DynamoDB Get Error]:', err);
+          return res.status(500).json({ error: err.message });
+        }
+      } else {
+        return res.status(400).json({ error: 'Invalid sync action. Choose action: "backup" or "restore"' });
+      }
+    } catch (e: any) {
+      console.error('[AWS Sync Handler Error]:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Endpoint to fetch default server-side configured Supabase credentials (if defined as environment secrets)
+  app.get('/api/supabase-config', (req, res) => {
+    try {
+      const url = process.env.VITE_SUPABASE_URL || '';
+      const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+      return res.json({
+        url: url.trim(),
+        anonKey: anonKey.trim()
+      });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
     }

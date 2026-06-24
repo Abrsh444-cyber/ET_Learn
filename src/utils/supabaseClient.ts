@@ -81,3 +81,29 @@ export async function fetchSupabaseBooks(): Promise<any[]> {
     return [];
   }
 }
+
+/**
+ * Asynchronously loads Supabase config from server if not already stored in localStorage.
+ */
+export async function initSupabaseConfig(): Promise<void> {
+  try {
+    const savedUrl = localStorage.getItem('ethiolearn_supabase_url');
+    const savedKey = localStorage.getItem('ethiolearn_supabase_key');
+    if (savedUrl && savedKey) return; // Already configured locally
+
+    const res = await fetch('/api/supabase-config');
+    if (res.ok) {
+      const config = await res.json();
+      if (config.url && config.anonKey) {
+        localStorage.setItem('ethiolearn_supabase_url', config.url);
+        localStorage.setItem('ethiolearn_supabase_key', config.anonKey);
+        supabaseInstance = null; // force reload with server-synced credentials
+        console.log('[Supabase Client] Successfully fetched and auto-configured Supabase credentials from server.');
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Client] Failed to fetch server-side Supabase credentials:', err);
+  }
+}
+
+

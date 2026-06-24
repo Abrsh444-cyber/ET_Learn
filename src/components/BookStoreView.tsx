@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  BookOpen, Search, Download, Sparkles, AlertCircle, Play, FileText, Bot, Compass, CheckCircle, ChevronDown, Award, RefreshCw,
+  BookOpen, Search, Download, Sparkles, AlertCircle, Play, FileText, Bot, Compass, CheckCircle, ChevronDown, Award, RefreshCw, Plus,
   BookOpenCheck, Sliders, Sun, Moon, Type, ChevronLeft, ChevronRight, Share2, HelpCircle, X, Check, Database, AlertTriangle, MessageSquare
 } from 'lucide-react';
 import { StudentProfile } from '../types';

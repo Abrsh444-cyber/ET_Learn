@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   Trophy, User, Smartphone, LogIn, LogOut, CheckCircle, Flame, Clock, RefreshCw, BarChart2, Key, GraduationCap, Globe,
-  HelpCircle, Send, MessageSquare
+  HelpCircle, Send, MessageSquare, Database, Cloud
 } from 'lucide-react';
 import { StudentProfile } from '../types';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
@@ -45,6 +45,17 @@ export default function StudentProfileView({
 
   const [errorMessage, setErrorMessage] = useState<{en: string, am: string} | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Database Cloud Synchronization States
+  const [dbProvider, setDbProvider] = useState<'supabase' | 'aws'>('supabase');
+  const [syncSupabaseUrl, setSyncSupabaseUrl] = useState(() => localStorage.getItem('ethiolearn_supabase_url') || '');
+  const [syncSupabaseKey, setSyncSupabaseKey] = useState(() => localStorage.getItem('ethiolearn_supabase_key') || '');
+  const [awsRegion, setAwsRegion] = useState(() => localStorage.getItem('ethiolearn_aws_region') || 'us-east-1');
+  const [awsAccessKeyId, setAwsAccessKeyId] = useState(() => localStorage.getItem('ethiolearn_aws_access_key') || '');
+  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState(() => localStorage.getItem('ethiolearn_aws_secret_key') || '');
+  const [awsTableName, setAwsTableName] = useState(() => localStorage.getItem('ethiolearn_aws_table') || 'ethiolearn_sync');
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [syncMessage, setSyncMessage] = useState('');
 
   // Help & Support Center States
   const [activeFaqIndex, setActiveFaqIndex] = useState<number | null>(null);
@@ -183,6 +194,149 @@ export default function StudentProfileView({
   const handleApiKeyChange = (key: string) => {
     const updated = { ...profile, claudeApiKey: key };
     onUpdateProfile(updated);
+  };
+
+  const handleCloudBackup = async () => {
+    setSyncStatus('loading');
+    setSyncMessage(language === 'en' ? 'Compressing and uploading local data...' : 'የአካባቢ መረጃን በመጫን ላይ...');
+    playClickChime();
+
+    // Collect all local study states
+    const payload = {
+      profile: localStorage.getItem('ethiolearn_current_profile'),
+      notes: localStorage.getItem('ethiolearn_custom_notes'),
+      decks: localStorage.getItem('ethiolearn_flashcards_decks'),
+      streak: localStorage.getItem('ethiolearn_pro_streak'),
+      hours: localStorage.getItem('ethiolearn_pro_study_hours'),
+      dates: localStorage.getItem('ethiolearn_study_dates'),
+      tickets: localStorage.getItem('ethiolearn_support_tickets'),
+      sessions: localStorage.getItem('ethiolearn_study_sessions'),
+      exams: localStorage.getItem('ethiolearn_exam_sessions_history'),
+      analytics: localStorage.getItem('ethiolearn_analytics')
+    };
+
+    const isSupabase = dbProvider === 'supabase';
+    const endpoint = isSupabase ? '/api/db/sync-supabase' : '/api/db/sync-aws';
+    
+    // Save credentials to localStorage
+    if (isSupabase) {
+      localStorage.setItem('ethiolearn_supabase_url', syncSupabaseUrl.trim());
+      localStorage.setItem('ethiolearn_supabase_key', syncSupabaseKey.trim());
+    } else {
+      localStorage.setItem('ethiolearn_aws_region', awsRegion.trim());
+      localStorage.setItem('ethiolearn_aws_access_key', awsAccessKeyId.trim());
+      localStorage.setItem('ethiolearn_aws_secret_key', awsSecretAccessKey.trim());
+      localStorage.setItem('ethiolearn_aws_table', awsTableName.trim());
+    }
+
+    const body = isSupabase ? {
+      url: syncSupabaseUrl,
+      key: syncSupabaseKey,
+      email: profile.email,
+      action: 'backup',
+      payload
+    } : {
+      region: awsRegion,
+      accessKeyId: awsAccessKeyId,
+      secretAccessKey: awsSecretAccessKey,
+      tableName: awsTableName,
+      email: profile.email,
+      action: 'backup',
+      payload
+    };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || data.details || 'Sync failed');
+      
+      setSyncStatus('success');
+      setSyncMessage(language === 'en' ? 'Cloud Backup completed successfully!' : 'የደመና ምትኬ በተሳካ ሁኔታ ተጠናቋል!');
+      playSuccessChime();
+    } catch (err: any) {
+      console.error(err);
+      setSyncStatus('error');
+      setSyncMessage(err.message || 'Connection failed.');
+      playFailureChime();
+    }
+  };
+
+  const handleCloudRestore = async () => {
+    if (!confirm(language === 'en' 
+      ? 'Are you sure you want to download and restore your cloud database backup? This will overwrite your current device data.'
+      : 'እርግጠኛ ነዎት የደመና ምትኬን መጫን ይፈልጋሉ? ይህ የአሁኑን መረጃዎን ይተካዋል!')) {
+      return;
+    }
+
+    setSyncStatus('loading');
+    setSyncMessage(language === 'en' ? 'Fetching cloud backup and restoring campus...' : 'ምትኬን ከደመና ላይ በማውረድ ላይ...');
+    playClickChime();
+
+    const isSupabase = dbProvider === 'supabase';
+    const endpoint = isSupabase ? '/api/db/sync-supabase' : '/api/db/sync-aws';
+
+    const body = isSupabase ? {
+      url: syncSupabaseUrl,
+      key: syncSupabaseKey,
+      email: profile.email,
+      action: 'restore'
+    } : {
+      region: awsRegion,
+      accessKeyId: awsAccessKeyId,
+      secretAccessKey: awsSecretAccessKey,
+      tableName: awsTableName,
+      email: profile.email,
+      action: 'restore'
+    };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Restore failed');
+
+      const restored = data.payload;
+      if (restored) {
+        // Write each key back to localStorage
+        Object.entries(restored).forEach(([key, val]) => {
+          const storageKey = key === 'profile' ? 'ethiolearn_current_profile' :
+                             key === 'notes' ? 'ethiolearn_custom_notes' :
+                             key === 'decks' ? 'ethiolearn_flashcards_decks' :
+                             key === 'streak' ? 'ethiolearn_pro_streak' :
+                             key === 'hours' ? 'ethiolearn_pro_study_hours' :
+                             key === 'dates' ? 'ethiolearn_study_dates' :
+                             key === 'tickets' ? 'ethiolearn_support_tickets' :
+                             key === 'sessions' ? 'ethiolearn_study_sessions' :
+                             key === 'exams' ? 'ethiolearn_exam_sessions_history' :
+                             key === 'analytics' ? 'ethiolearn_analytics' : null;
+          
+          if (storageKey && val && typeof val === 'string') {
+            localStorage.setItem(storageKey, val);
+          }
+        });
+
+        setSyncStatus('success');
+        setSyncMessage(language === 'en' ? 'Campus restored successfully! Reloading in 2s...' : 'ምትኬ በተሳካ ሁኔታ ተመልሷል! በአውቶማቲክ ድጋሚ በመጫን ላይ...');
+        playSuccessChime();
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        throw new Error('Backup empty');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSyncStatus('error');
+      setSyncMessage(err.message || 'Restore failed.');
+      playFailureChime();
+    }
   };
 
   return (
@@ -617,6 +771,192 @@ export default function StudentProfileView({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* CLOUD DATABASE SYNCHRONIZATION SECTION */}
+          <div className="bg-white dark:bg-[#0c0d12] rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm p-6 space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-zinc-800">
+              <h3 className="text-base font-bold font-serif text-slate-800 dark:text-zinc-150 flex items-center gap-2">
+                <Database className="w-5 h-5 text-emerald-600 animate-pulse" />
+                <span>{language === 'en' ? 'Cloud Database Sync' : 'የደመና ዳታቤዝ ማመሳሰያ'}</span>
+              </h3>
+              <span className="text-[9px] font-extrabold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                Supabase & AWS Ready
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-sans">
+              {language === 'en' 
+                ? 'Keep your campus metrics, custom study notes, streaks, and flashcard decks fully secure. Connect to your own cloud database to synchronize across multiple browsers, tablets, or phone devices.'
+                : 'የእርስዎን የጥናት ማስታወሻዎች፣ የጥናት ቀናት እና ፈተናዎች በተለያዩ ስልኮች እና ኮምፒተሮች ላይ ለማመሳሰል የእርስዎን የግል ሱፓቤዝ ወይም አማዞን አካውንት እዚህ ያገናኙ።'}
+            </p>
+
+            {/* Provider selector tabs */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-zinc-950 rounded-xl">
+              <button
+                type="button"
+                onClick={() => { playClickChime(); setDbProvider('supabase'); }}
+                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                  dbProvider === 'supabase'
+                    ? 'bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 shadow-sm'
+                    : 'text-slate-400 dark:text-zinc-550 hover:text-slate-600'
+                }`}
+              >
+                ⚡ Supabase SQL
+              </button>
+              <button
+                type="button"
+                onClick={() => { playClickChime(); setDbProvider('aws'); }}
+                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-all ${
+                  dbProvider === 'aws'
+                    ? 'bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 shadow-sm'
+                    : 'text-slate-400 dark:text-zinc-550 hover:text-slate-600'
+                }`}
+              >
+                ☁️ Amazon AWS
+              </button>
+            </div>
+
+            {/* Config Fields Form */}
+            {dbProvider === 'supabase' ? (
+              <div className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://your-project.supabase.co"
+                    value={syncSupabaseUrl}
+                    onChange={(e) => setSyncSupabaseUrl(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                    Supabase Anon API Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    value={syncSupabaseKey}
+                    onChange={(e) => setSyncSupabaseKey(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                  />
+                </div>
+
+                <div className="p-3 bg-zinc-950/80 rounded-lg border border-zinc-900 text-[10px] font-mono text-zinc-400 space-y-1.5 leading-relaxed">
+                  <span className="text-[#C8962E] font-bold block uppercase tracking-wider">🛠️ Required Supabase Table:</span>
+                  <span>Create a table inside your Supabase SQL Editor with this exact structure:</span>
+                  <pre className="bg-[#050505] p-2 rounded text-emerald-400 text-[9.5px] overflow-x-auto select-all cursor-pointer">
+{`create table ethiolearn_sync (
+  email text primary key,
+  data jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);`}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                      AWS Region
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="us-east-1"
+                      value={awsRegion}
+                      onChange={(e) => setAwsRegion(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                      DynamoDB Table Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ethiolearn_sync"
+                      value={awsTableName}
+                      onChange={(e) => setAwsTableName(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                    AWS Access Key ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="AKIAIOSFODNN7EXAMPLE"
+                    value={awsAccessKeyId}
+                    onChange={(e) => setAwsAccessKeyId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
+                    AWS Secret Access Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+                    value={awsSecretAccessKey}
+                    onChange={(e) => setAwsSecretAccessKey(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
+                  />
+                </div>
+
+                <div className="p-3 bg-zinc-950/80 rounded-lg border border-zinc-900 text-[10px] font-mono text-zinc-400 space-y-1 leading-relaxed">
+                  <span className="text-[#C8962E] font-bold block uppercase tracking-wider">🛠️ Amazon Table Structure:</span>
+                  <span>Create a DynamoDB table with name <strong className="text-zinc-200 font-mono">{awsTableName || 'ethiolearn_sync'}</strong> and set the Partition Key to:</span>
+                  <div className="bg-[#050505] p-2.5 rounded text-zinc-200 text-[9.5px]">
+                    <p>• Attribute Name: <strong className="text-emerald-400 font-mono">email</strong></p>
+                    <p>• Attribute Type: <strong className="text-emerald-400 font-mono">String</strong></p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Sync Feedbacks */}
+            {syncStatus !== 'idle' && (
+              <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 animate-fade-in ${
+                syncStatus === 'loading' ? 'bg-amber-500/5 border-amber-500/10 text-amber-600 dark:text-amber-400' :
+                syncStatus === 'success' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'
+              }`}>
+                <span className="text-sm shrink-0">
+                  {syncStatus === 'loading' ? '⏳' : syncStatus === 'success' ? '✅' : '⚠️'}
+                </span>
+                <p className="text-xs font-bold leading-relaxed">{syncMessage}</p>
+              </div>
+            )}
+
+            {/* Sync Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1.5">
+              <button
+                type="button"
+                onClick={handleCloudBackup}
+                disabled={syncStatus === 'loading'}
+                className="h-11 min-h-[44px] bg-gradient-to-r from-emerald-600 to-[#1A7A3C] hover:opacity-95 text-black disabled:opacity-50 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all active:scale-[0.98]"
+              >
+                <Cloud className="w-4 h-4 text-black" />
+                <span>{language === 'en' ? 'Upload Backup' : 'ምትኬን ወደ ደመና ስቀል'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCloudRestore}
+                disabled={syncStatus === 'loading'}
+                className="h-11 min-h-[44px] bg-slate-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-200 disabled:opacity-50 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+              >
+                <Database className="w-4 h-4 text-zinc-400" />
+                <span>{language === 'en' ? 'Restore Campus' : 'ከደመና ወደዚህ መልስ'}</span>
+              </button>
+            </div>
           </div>
 
           {/* HELP & SUPPORT CENTER (Requirement) */}
