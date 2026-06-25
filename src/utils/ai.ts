@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { GoogleGenAI } from '@google/genai';
+
 // Helper to stream/parse Anthropic SSE responses forwarded from Express proxy
 export interface ChatAttachment {
   name: string;
@@ -29,22 +31,87 @@ export async function submitClaudeChat(
   callbacks: StreamCallbacks
 ) {
   try {
-    const response = await fetch('/api/claude/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages,
-        system: systemPrompt,
-        userApiKey: apiKey,
-        model: 'claude-3-5-sonnet-20241022'
-      })
-    });
+    let response: Response | null = null;
+    let useFallback = false;
 
-    if (!response.ok) {
+    try {
+      response = await fetch('/api/claude/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages,
+          system: systemPrompt,
+          userApiKey: apiKey,
+          model: 'claude-3-5-sonnet-20241022'
+        })
+      });
+
+      if (response.status === 404) {
+        console.warn('[EthioLearn Client] Server returned 404 for chat endpoint. Bypassing proxy and utilizing direct client-side fallback.');
+        useFallback = true;
+      }
+    } catch (fetchErr) {
+      console.warn('[EthioLearn Client] Failed to reach the Express backend server. Bypassing proxy and utilizing direct client-side fallback:', fetchErr);
+      useFallback = true;
+    }
+
+    if (useFallback) {
+      // Self-healing direct browser call if a mobile phone browser receives a 404 or cannot reach Express
+      if (!apiKey || ['no-key', 'no-api-key', 'undefined', 'null', 'none'].includes(apiKey.trim().toLowerCase())) {
+        throw new Error('Server proxy is offline/404, and no valid Gemini API Key is loaded in your settings.');
+      }
+
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+
+      // Convert messages format to Gemini contents schema
+      const geminiContents = messages.map((m: any) => {
+        const parts: any[] = [];
+        if (m.content) {
+          parts.push({ text: m.content });
+        }
+        if (m.attachment && m.attachment.data && m.attachment.mimeType) {
+          parts.push({
+            inlineData: {
+              data: m.attachment.data,
+              mimeType: m.attachment.mimeType
+            }
+          });
+        }
+        if (parts.length === 0) {
+          parts.push({ text: '' });
+        }
+        return {
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts
+        };
+      });
+
+      const stream = await ai.models.generateContentStream({
+        model: 'gemini-3.5-flash',
+        contents: geminiContents,
+        config: {
+          systemInstruction: systemPrompt || undefined,
+        },
+      });
+
+      let accumulatedText = '';
+      for await (const chunk of stream) {
+        const content = chunk.text;
+        if (content) {
+          accumulatedText += content;
+          callbacks.onChunk(content);
+        }
+      }
+
+      callbacks.onComplete(accumulatedText);
+      return;
+    }
+
+    if (!response || !response.ok) {
       const errDetails = await response.json().catch(() => ({}));
-      throw new Error(errDetails.error || `Proxy failed with status ${response.status}`);
+      throw new Error(errDetails.error || `Proxy failed with status ${response?.status}`);
     }
 
     if (!response.body) {

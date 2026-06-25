@@ -46,7 +46,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
   // Endpoint to let admin sync their local API Key to the cloud container persistently
-  app.post('/api/sync-master-key', (req, res) => {
+  app.post(['/api/sync-master-key', '/api/sync-master-key/'], (req, res) => {
     try {
       const { key } = req.body;
       if (isValidServiceKey(key)) {
@@ -68,7 +68,7 @@ async function startServer() {
   });
 
   // Supabase proxy endpoint to backup/restore study metrics
-  app.post('/api/db/sync-supabase', async (req, res) => {
+  app.post(['/api/db/sync-supabase', '/api/db/sync-supabase/'], async (req, res) => {
     try {
       const { url, key, email, action, payload } = req.body;
       
@@ -128,7 +128,7 @@ async function startServer() {
   });
 
   // AWS DynamoDB proxy endpoint to backup/restore study metrics
-  app.post('/api/db/sync-aws', async (req, res) => {
+  app.post(['/api/db/sync-aws', '/api/db/sync-aws/'], async (req, res) => {
     try {
       const { region, accessKeyId, secretAccessKey, tableName, email, action, payload } = req.body;
       
@@ -212,7 +212,7 @@ async function startServer() {
   });
 
   // Endpoint to fetch default server-side configured Supabase credentials (if defined as environment secrets)
-  app.get('/api/supabase-config', (req, res) => {
+  app.get(['/api/supabase-config', '/api/supabase-config/'], (req, res) => {
     try {
       const url = process.env.VITE_SUPABASE_URL || '';
       const anonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
