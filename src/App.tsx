@@ -110,6 +110,36 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.subjects)) {
+          const all16 = [
+            "Emerging Technologies",
+            "Introduction to Economics",
+            "General Biology",
+            "Communicative English",
+            "Moral and Civic Education",
+            "Mathematics",
+            "Inclusive Education",
+            "Geography",
+            "Logic and Critical Thinking",
+            "History",
+            "Chemistry",
+            "Aptitude",
+            "General Physics",
+            "Entrepreneurship",
+            "Social Anthropology",
+            "C++ Programming"
+          ];
+          let updated = false;
+          all16.forEach(s => {
+            if (!parsed.subjects.includes(s)) {
+              parsed.subjects.push(s);
+              updated = true;
+            }
+          });
+          if (updated) {
+            localStorage.setItem('ethiolearn_current_profile', JSON.stringify(parsed));
+          }
+        }
         return parsed;
       } catch (e) {
         return null;

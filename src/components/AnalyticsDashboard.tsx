@@ -109,7 +109,24 @@ export default function AnalyticsDashboard({
   const [timerSubject, setTimerSubject] = useState("Emerging Technologies");
   const [manualSubject, setManualSubject] = useState("Emerging Technologies");
   const [manualMinutes, setManualMinutes] = useState("");
-  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>(['Emerging Technologies', 'Introduction to Economics', 'General Biology', 'Communicative English', 'Moral and Civic Education']);
+  const [enrolledSubjects, setEnrolledSubjects] = useState<string[]>([
+    "Emerging Technologies",
+    "Introduction to Economics",
+    "General Biology",
+    "Communicative English",
+    "Moral and Civic Education",
+    "Mathematics",
+    "Inclusive Education",
+    "Geography",
+    "Logic and Critical Thinking",
+    "History",
+    "Chemistry",
+    "Aptitude",
+    "General Physics",
+    "Entrepreneurship",
+    "Social Anthropology",
+    "C++ Programming"
+  ]);
 
   const isDark = theme === 'dark';
 
@@ -228,7 +245,24 @@ export default function AnalyticsDashboard({
     // 2. CALCULATE DYNAMIC SUBJECT FOCUS BREAKDOWN (Doughnut Chart)
     const subjectList = enrolledSubjects.length > 0 
       ? enrolledSubjects 
-      : ['Emerging Technologies', 'Introduction to Economics', 'General Biology', 'Communicative English', 'Moral and Civic Education'];
+      : [
+          "Emerging Technologies",
+          "Introduction to Economics",
+          "General Biology",
+          "Communicative English",
+          "Moral and Civic Education",
+          "Mathematics",
+          "Inclusive Education",
+          "Geography",
+          "Logic and Critical Thinking",
+          "History",
+          "Chemistry",
+          "Aptitude",
+          "General Physics",
+          "Entrepreneurship",
+          "Social Anthropology",
+          "C++ Programming"
+        ];
     
     const weightScores = subjectList.map(subj => {
       let weight = 0;

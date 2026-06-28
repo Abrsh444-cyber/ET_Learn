@@ -82,6 +82,94 @@ const PAST_EXAM_BANK: { [subject: string]: QuizQuestion[] } = {
       correctAnswer: "The 1995 FDRE Constitution",
       explanation: "The 1995 Constitution of the FDRE established the current ethnic-based federal structure, decentralized administrative powers, and coded core democratic rights."
     }
+  ],
+  "Mathematics": [
+    {
+      question: "In vector algebra, what is the dot product of vectors u = [2, 3] and v = [4, -1]?",
+      options: ["5", "11", "14", "-5"],
+      correctAnswer: "5",
+      explanation: "The dot product is calculated as (2*4) + (3*-1) = 8 - 3 = 5."
+    }
+  ],
+  "Inclusive Education": [
+    {
+      question: "Which educational strategy involves modifying the learning environment, instruction, and assessments to support students with diverse learning styles and abilities?",
+      options: ["Differentiated Instruction", "Standardized Isolationism", "Homogenous Grouping", "Unimodal lecturing"],
+      correctAnswer: "Differentiated Instruction",
+      explanation: "Differentiated instruction addresses the individual learning needs of all students within the same classroom setting."
+    }
+  ],
+  "Geography": [
+    {
+      question: "Which morphological feature of East Africa runs completely through Ethiopia from northeast to southwest, dividing its highlands?",
+      options: ["The Great Rift Valley", "The Ethiopian Plateau", "The Ras Dashen Peak", "The Danakil Depression"],
+      correctAnswer: "The Great Rift Valley",
+      explanation: "The East African Rift System divides the Ethiopian highlands into northwestern and southeastern sections, hosting a chain of beautiful lakes."
+    }
+  ],
+  "Logic and Critical Thinking": [
+    {
+      question: "What is the form of a deductive argument that contains exactly two premises and a conclusion?",
+      options: ["A syllogism", "An inductive generalization", "An analogical inference", "A formal fallacy"],
+      correctAnswer: "A syllogism",
+      explanation: "A syllogism is a form of reasoning in which a conclusion is drawn from two given or assumed premises (e.g. categorical syllogism)."
+    }
+  ],
+  "History": [
+    {
+      question: "Which famous Axumite Emperor converted the kingdom to Christianity in the 4th century AD?",
+      options: ["Emperor Ezana", "Emperor Kaleb", "Emperor Lalibela", "Emperor Menelik I"],
+      correctAnswer: "Emperor Ezana",
+      explanation: "Emperor Ezana was the first monarch of Axum to adopt Christianity, establishing it as the state religion around 330 AD."
+    }
+  ],
+  "Chemistry": [
+    {
+      question: "According to Bronsted-Lowry theory, what species is formed when an acid donates a proton to a base?",
+      options: ["Its conjugate base", "Its conjugate acid", "A neutral precipitate", "A hydronium salt"],
+      correctAnswer: "Its conjugate base",
+      explanation: "An acid that has lost its proton becomes its conjugate base, which is capable of accepting a proton in the reverse reaction."
+    }
+  ],
+  "Aptitude": [
+    {
+      question: "A machine can produce 50 widgets in 40 minutes. How many widgets can three identical machines produce working together for 2 hours?",
+      options: ["450 widgets", "150 widgets", "300 widgets", "225 widgets"],
+      correctAnswer: "450 widgets",
+      explanation: "One machine produces 50 widgets per 40 min, which is 150 widgets in 120 min (2 hours). Three machines will produce 150 * 3 = 450 widgets."
+    }
+  ],
+  "General Physics": [
+    {
+      question: "What is the work done on an object when a constant force of 15 Newtons moves it 4 meters in the direction of the force?",
+      options: ["60 Joules", "3.75 Joules", "19 Joules", "30 Joules"],
+      correctAnswer: "60 Joules",
+      explanation: "Work is calculated as Force * distance * cos(theta). Here, Work = 15 N * 4 m = 60 Joules."
+    }
+  ],
+  "Entrepreneurship": [
+    {
+      question: "Which component of the Canvas Business Model defines the groups of people or organizations an enterprise aims to reach and serve?",
+      options: ["Customer Segments", "Value Propositions", "Channels", "Key Partnerships"],
+      correctAnswer: "Customer Segments",
+      explanation: "Customer Segments define the specific profiles or cohorts of customers that a business builds products or services for."
+    }
+  ],
+  "Social Anthropology": [
+    {
+      question: "Which of the following is a primary method used by cultural anthropologists that involves living within a community to observe and record daily life firsthand?",
+      options: ["Participant Observation", "Statistical Census Surveying", "Controlled Laboratory Experimentation", "Quantitative Econometrics"],
+      correctAnswer: "Participant Observation",
+      explanation: "Participant observation is the hallmark qualitative research method of anthropology, requiring immersive fieldwork in local communities."
+    }
+  ],
+  "C++ Programming": [
+    {
+      question: "What is the function of the 'destructor' in a C++ class?",
+      options: ["To deallocate memory and clean up resources when an object goes out of scope", "To allocate dynamic pointer blocks on class instantiation", "To copy private member variables to external scopes", "To compile nested header declarations automatically"],
+      correctAnswer: "To deallocate memory and clean up resources when an object goes out of scope",
+      explanation: "Destructors are special member functions called automatically when an object is destroyed or goes out of scope, releasing acquired heap resources."
+    }
   ]
 };
 

@@ -41,7 +41,22 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const [year, setYear] = useState('Grade 12');
   const [avatar, setAvatar] = useState('star');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([
-    "Emerging Technologies", "Introduction to Economics", "General Biology", "Communicative English", "Moral and Civic Education"
+    "Emerging Technologies",
+    "Introduction to Economics",
+    "General Biology",
+    "Communicative English",
+    "Moral and Civic Education",
+    "Mathematics",
+    "Inclusive Education",
+    "Geography",
+    "Logic and Critical Thinking",
+    "History",
+    "Chemistry",
+    "Aptitude",
+    "General Physics",
+    "Entrepreneurship",
+    "Social Anthropology",
+    "C++ Programming"
   ]);
   const [claudeApiKey, setClaudeApiKey] = useState('');
   
@@ -71,7 +86,18 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     "Introduction to Economics",
     "General Biology",
     "Communicative English",
-    "Moral and Civic Education"
+    "Moral and Civic Education",
+    "Mathematics",
+    "Inclusive Education",
+    "Geography",
+    "Logic and Critical Thinking",
+    "History",
+    "Chemistry",
+    "Aptitude",
+    "General Physics",
+    "Entrepreneurship",
+    "Social Anthropology",
+    "C++ Programming"
   ];
 
   // Fetch accounts on load
@@ -145,7 +171,18 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               "Introduction to Economics",
               "General Biology",
               "Communicative English",
-              "Moral and Civic Education"
+              "Moral and Civic Education",
+              "Mathematics",
+              "Inclusive Education",
+              "Geography",
+              "Logic and Critical Thinking",
+              "History",
+              "Chemistry",
+              "Aptitude",
+              "General Physics",
+              "Entrepreneurship",
+              "Social Anthropology",
+              "C++ Programming"
             ],
             claudeApiKey: "",
             dailyGoalHours: 2,
@@ -343,7 +380,18 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
         "Introduction to Economics",
         "General Biology",
         "Communicative English",
-        "Moral and Civic Education"
+        "Moral and Civic Education",
+        "Mathematics",
+        "Inclusive Education",
+        "Geography",
+        "Logic and Critical Thinking",
+        "History",
+        "Chemistry",
+        "Aptitude",
+        "General Physics",
+        "Entrepreneurship",
+        "Social Anthropology",
+        "C++ Programming"
       ],
       claudeApiKey: "",
       dailyGoalHours: 2,

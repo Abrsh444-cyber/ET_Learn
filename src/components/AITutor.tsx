@@ -95,6 +95,149 @@ const LOCAL_FALLBACK_QUIZ: { [subject: string]: any[] } = {
       correctAnswer: "Respect for human and democratic rights and sovereignty of citizens",
       explanation: "Modern democratic constitutions ensure sovereignty belongs to the citizens, protected by rigorous checks and balances."
     }
+  ],
+  "Mathematics": [
+    {
+      question: "What is the derivative of f(x) = 3x^2 + 5x - 7 with respect to x?",
+      options: [
+        "6x + 5",
+        "3x + 5",
+        "6x^2 + 5",
+        "6x"
+      ],
+      correctAnswer: "6x + 5",
+      explanation: "By the power rule, the derivative of 3x^2 is 6x, and the derivative of 5x is 5. The derivative of a constant (-7) is 0."
+    }
+  ],
+  "Inclusive Education": [
+    {
+      question: "Which of the following best describes the core philosophy of Inclusive Education?",
+      options: [
+        "Separating children with disabilities into special schools",
+        "Providing equitable learning opportunities for all students regardless of diverse needs",
+        "Only teaching high-achieving academic students",
+        "Using a single uniform teaching method for everyone"
+      ],
+      correctAnswer: "Providing equitable learning opportunities for all students regardless of diverse needs",
+      explanation: "Inclusive education aims to remove learning barriers so that all students learn together in a supportive environment."
+    }
+  ],
+  "Geography": [
+    {
+      question: "Which major Ethiopian river basin accounts for the largest share of the country's annual surface water runoff?",
+      options: [
+        "The Abbay (Blue Nile) Basin",
+        "The Awash River Basin",
+        "The Omo-Gibe Basin",
+        "The Wabi Shebelle Basin"
+      ],
+      correctAnswer: "The Abbay (Blue Nile) Basin",
+      explanation: "The Blue Nile (Abbay) Basin is Ethiopia's largest river basin by runoff volume, contributing significantly to national and regional water resources."
+    }
+  ],
+  "Logic and Critical Thinking": [
+    {
+      question: "Which logical fallacy occurs when an opponent's argument is misrepresented or exaggerated to make it easier to attack?",
+      options: [
+        "Ad Hominem",
+        "Straw Man Fallacy",
+        "Slippery Slope",
+        "Begging the Question"
+      ],
+      correctAnswer: "Straw Man Fallacy",
+      explanation: "A Straw Man fallacy involves oversimplifying, misrepresenting, or inventing an opponent's argument to easily knock it down."
+    }
+  ],
+  "History": [
+    {
+      question: "Which historic 1896 battle secured Ethiopia's sovereignty against Italian colonial forces?",
+      options: [
+        "Battle of Adwa",
+        "Battle of Maichew",
+        "Battle of Gundet",
+        "Battle of Gura"
+      ],
+      correctAnswer: "Battle of Adwa",
+      explanation: "The Battle of Adwa on March 1, 1896 was a decisive victory for Ethiopian forces under Emperor Menelik II, preserving the nation's independence."
+    }
+  ],
+  "Chemistry": [
+    {
+      question: "What type of chemical bond is formed when two atoms share electrons equally?",
+      options: [
+        "Ionic bond",
+        "Covalent bond",
+        "Hydrogen bond",
+        "Metallic bond"
+      ],
+      correctAnswer: "Covalent bond",
+      explanation: "Covalent bonds are characterized by the sharing of pairs of electrons between atoms, typically non-metals."
+    }
+  ],
+  "Aptitude": [
+    {
+      question: "If a car travels 180 kilometers in 3 hours, what is its average speed in meters per second?",
+      options: [
+        "16.67 m/s",
+        "20 m/s",
+        "60 m/s",
+        "15 m/s"
+      ],
+      correctAnswer: "16.67 m/s",
+      explanation: "180 km in 3 hours is 60 km/h. To convert km/h to m/s, divide by 3.6: 60 / 3.6 = 16.67 m/s."
+    }
+  ],
+  "General Physics": [
+    {
+      question: "According to Newton's Second Law of Motion, what is the relationship between Force (F), Mass (m), and Acceleration (a)?",
+      options: [
+        "F = m * a",
+        "F = m / a",
+        "F = m + a",
+        "F = a / m"
+      ],
+      correctAnswer: "F = m * a",
+      explanation: "Newton's Second Law states that force is directly proportional to the product of mass and acceleration."
+    }
+  ],
+  "Entrepreneurship": [
+    {
+      question: "What document outlines a startup's operational plans, market analysis, financial projections, and value proposition?",
+      options: [
+        "A corporate tax return",
+        "A business plan",
+        "A stock certificate",
+        "A bank statement"
+      ],
+      correctAnswer: "A business plan",
+      explanation: "A business plan acts as a roadmap for an entrepreneur, detailing the strategy to launch, grow, and fund a business venture."
+    }
+  ],
+  "Social Anthropology": [
+    {
+      question: "Which anthropological concept describes the practice of viewing and analyzing a culture through its own lens rather than judging it by one's own cultural standards?",
+      options: [
+        "Ethnocentrism",
+        "Cultural Relativism",
+        "Assimilation",
+        "Acculturation"
+      ],
+      correctAnswer: "Cultural Relativism",
+      explanation: "Cultural relativism promotes understanding cultural practices within their own context, suspending external moral judgments."
+    }
+  ],
+  "C++ Programming": [
+    {
+      question: "Which of the following is the correct syntax to declare a dynamic array of integers in C++?",
+      options: [
+        "int* arr = new int[size];",
+        "int arr = new int(size);",
+        "new int arr[size];",
+        "int arr[] = new array(size);"
+      ],
+      correctAnswer: "int* arr = new int[size];",
+      explanation: "In C++, dynamic memory allocation for arrays uses the 'new' operator with square brackets, returning a pointer to the first element."
+    }
   ]
 };
 
@@ -224,7 +367,18 @@ export default function AITutor({
     "Introduction to Economics": ["Supply and demand example", "Explain GDP formula", "What is Giffen Good?", "Why inflation happens"],
     "General Biology": ["Explain photosynthesis", "Lock and key enzyme model", "Mitosis vs Meiosis differences", "Explain Krebs Cycle"],
     "Communicative English": ["Reported speech rules", "Third conditional structure", "Active vs passive voice", "Used to vs Get used to"],
-    "Moral and Civic Education": ["Ethiopian constitution pillars", "Human rights categories", "Federalism system", "Deontology vs Utilitarianism"]
+    "Moral and Civic Education": ["Ethiopian constitution pillars", "Human rights categories", "Federalism system", "Deontology vs Utilitarianism"],
+    "Mathematics": ["Derivative power rule", "Solve quadratic formula", "Explain limits conceptually", "What is Euler's number?"],
+    "Inclusive Education": ["Differentiated instruction", "Special needs accommodations", "Universal Design for Learning", "Philosophy of inclusion"],
+    "Geography": ["Ethiopia rift valley lakes", "Climatic zones of Ethiopia", "What is absolute location?", "Explain river basins"],
+    "Logic and Critical Thinking": ["Identify Straw Man fallacy", "Deductive vs Inductive reasoning", "Validity vs Soundness", "Syllogism definition"],
+    "History": ["Causes of Battle of Adwa", "Axumite civilization achievements", "Lalibela rock-hewn churches", "The Tripartite Treaty of 1906"],
+    "Chemistry": ["Balancing redox equations", "Periodic table trends", "Le Chatelier's principle", "Ideal gas law calculation"],
+    "Aptitude": ["Logical reasoning patterns", "Work and time problems", "Percentage calculation tips", "Data interpretation help"],
+    "General Physics": ["Newton's laws explained", "Conservation of energy", "Electric potential difference", "Wave-particle duality"],
+    "Entrepreneurship": ["Design a business model", "Value proposition canvas", "Startup funding stages", "Market research methods"],
+    "Social Anthropology": ["What is cultural relativism?", "Define kinship structures", "Qualitative research methods", "Ethnographic fieldwork study"],
+    "C++ Programming": ["Explain pointers & references", "Object-Oriented programming in C++", "Memory allocation (new/delete)", "C++ vector class guide"]
   };
 
   const getSystemPrompt = () => {

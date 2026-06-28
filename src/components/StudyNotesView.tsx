@@ -42,7 +42,7 @@ export default function StudyNotesView({
   onSaveDecksState
 }: StudyNotesViewProps) {
   const [activeTab, setActiveTab] = useState<'prebuilt' | 'ai_generator' | 'notepad'>('prebuilt');
-  const [selectedNoteId, setSelectedNoteId] = useState<'note_et' | 'note_ec' | 'note_bi' | 'note_eg' | 'note_mc'>('note_et');
+  const [selectedNoteId, setSelectedNoteId] = useState<string>('note_et');
   const [selectedNote, setSelectedNote] = useState<any>(PREBUILT_STUDY_NOTES[0]);
 
   // Google Workspace Sync States

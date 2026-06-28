@@ -5,7 +5,6 @@
 
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -313,7 +312,7 @@ async function startServer() {
         });
 
         const stream = await ai.models.generateContentStream({
-          model: 'gemini-3.5-flash',
+          model: 'gemini-2.5-flash',
           contents: geminiContents,
           config: {
             systemInstruction: system || undefined,
@@ -675,7 +674,7 @@ async function startServer() {
       }
 
       // We make a direct POST to OpenRouter chat completions API
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      let response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -694,7 +693,35 @@ async function startServer() {
       if (!response.ok) {
         const errBody = await response.text();
         console.error('OpenRouter API returned error:', errBody);
-        return res.status(response.status).json({ error: errBody });
+        
+        const isUnavailable = response.status === 503 || response.status === 429 || errBody.includes('UNAVAILABLE') || errBody.includes('503') || errBody.includes('high demand') || errBody.includes('temporary');
+        
+        if (isUnavailable && openRouterModel !== 'google/gemini-2.5-flash') {
+          console.warn(`[EthioLearn Server] OpenRouter model ${openRouterModel} is overloaded or unavailable. Retrying with high-availability fallback 'google/gemini-2.5-flash'...`);
+          response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+              'HTTP-Referer': 'https://ai.studio/build',
+              'X-Title': 'EthioLearn',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: openRouterMessages,
+              stream: true,
+              max_tokens: 2000,
+            }),
+          });
+          
+          if (!response.ok) {
+            const secondErrBody = await response.text();
+            console.error('OpenRouter fallback model also failed:', secondErrBody);
+            return res.status(response.status).json({ error: secondErrBody });
+          }
+        } else {
+          return res.status(response.status).json({ error: errBody });
+        }
       }
 
       // Configure chunks for Server-Sent Events (SSE) streaming helper
@@ -775,6 +802,7 @@ async function startServer() {
 
   // Serve static assets in production or use Vite developer middleware
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',

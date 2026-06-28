@@ -262,5 +262,217 @@ export const PREBUILT_STUDY_NOTES: PrebuiltStudyNote[] = [
     },
     mnemonics: "Think of Chapters One, Two, and Three as defining: Our State Identity, Our Sovereign Trust, and Our Inalienable Human Freedoms.",
     color: "rose"
+  },
+  {
+    id: "note_ma",
+    subject: "Mathematics",
+    title: "Differential Calculus & The Power Rule",
+    intro: "Calculus is the mathematical language of change. Differential calculus enables us to calculate precise instantaneous rates of change and find gradients of curves at single points.",
+    definition: "The Derivative of a function f(x) measures how fast the output f(x) changes with respect to small changes in the input x.",
+    explanation: "Core techniques for standard curriculum examinations:\n- The Power Rule: For any real power n, the derivative of x^n with respect to x is n * x^(n-1).\n- Product Rule: Used when two functions are multiplied: d/dx [u*v] = u'v + uv'.\n- Quotient Rule: Used when functions are divided: d/dx [u/v] = (u'v - uv') / v^2.\n- Chain Rule: Used for composite functions: dy/dx = dy/du * du/dx.",
+    diagram: "  Gradient (m) = lim [f(x + h) - f(x)] / h as h -> 0\n  Curve: f(x) = x^2   ==>   Tangent line at x=2 has slope m = 4",
+    summaryTable: {
+      header: ["Function f(x)", "Derivative f'(x)", "Rule Name", "Example Application"],
+      rows: [
+        ["c (constant)", "0", "Constant Rule", "d/dx (5) = 0"],
+        ["x^n", "n * x^(n-1)", "Power Rule", "d/dx (x^3) = 3x^2"],
+        ["sin(x)", "cos(x)", "Trig Rule", "d/dx (2 sin(x)) = 2 cos(x)"],
+        ["e^x", "e^x", "Exponential", "d/dx (e^(3x)) = 3e^(3x)"]
+      ]
+    },
+    mnemonics: "Power Rule: 'Bring the exponent to the front, then subtract one from the power!'",
+    color: "blue"
+  },
+  {
+    id: "note_ie",
+    subject: "Inclusive Education",
+    title: "Universal Design for Learning (UDL) Framework",
+    intro: "Inclusive education is founded on the conviction that every student has a fundamental right to a supportive, adaptive learning environment that removes historical instructional barriers.",
+    definition: "Universal Design for Learning (UDL) is an educational framework that guides the development of flexible learning environments to accommodate individual learning differences.",
+    explanation: "UDL is structured around three core brain-network principles:\n1. Multiple Means of Engagement (The 'Why' of learning): Recruiting student interest, sustaining effort, and fostering self-regulation.\n2. Multiple Means of Representation (The 'What' of learning): Presenting information and content in varied formats (text, audio, graphics, hands-on activity).\n3. Multiple Means of Action & Expression (The 'How' of learning): Giving learners alternative ways to demonstrate what they know through customizable assessments.",
+    diagram: "     [UDL Framework] ===> [Engagement] (Why) / [Representation] (What) / [Action] (How)",
+    summaryTable: {
+      header: ["UDL Principle", "Brain Network", "Instructional Strategy", "Real-world Example"],
+      rows: [
+        ["Engagement", "Affective Network", "Fostering collaboration, offering choices", "Group projects with flexible roles"],
+        ["Representation", "Recognition Network", "Offering visual & auditory alternatives", "E-textbooks with built-in text-to-speech"],
+        ["Action & Expression", "Strategic Network", "Providing diverse media options for feedback", "Allowing a podcast or essay submission"]
+      ]
+    },
+    mnemonics: "Think of the brain's 3 networks: Feel it (Engagement), See/Hear it (Representation), and Do it (Expression).",
+    color: "emerald"
+  },
+  {
+    id: "note_ge",
+    subject: "Geography",
+    title: "Ethiopia's Physical Topography & River Basins",
+    intro: "Ethiopia possesses a highly diverse and dramatic topography. Understanding the rift system and water resource networks is crucial for studying East African physical geography.",
+    definition: "The East African Rift System is a continuous active continental rift zone that bisects the Ethiopian highlands, shaping the country's lakes and major drainage systems.",
+    explanation: "Ethiopia is divided into three major topographical regions:\n1. The Western Highlands and Lowlands: Includes high peaks like Ras Dashen. Drained by the Blue Nile (Abbay), Tekeze, and Baro rivers.\n2. The Eastern Highlands and Lowlands: Separated by the Rift Valley. Features the Bale and Arsi mountain chains, drained by the Wabi Shebelle and Genale-Dawa rivers.\n3. The Ethiopian Rift Valley: A graben containing numerous lakes (e.g., Langano, Abaya, Chamo) and the endorheic Awash River Basin.",
+    diagram: " Western Highlands <--- [ Great Rift Valley ] ---> Eastern Highlands\n Drained by Abbay         (Chain of Lakes)          Drained by Wabi Shebelle",
+    summaryTable: {
+      header: ["Drainage Basin", "Main Rivers Included", "Flow Destination", "Major Characteristics"],
+      rows: [
+        ["Western (Mediterranean)", "Abbay, Tekeze, Baro", "Mediterranean Sea (via Nile)", "High surface runoff volume, deep gorges"],
+        ["Southeastern (Indian Ocean)", "Wabi Shebelle, Genale", "Indian Ocean", "Longest river courses, arid lower basin"],
+        ["Internal (Rift Valley)", "Awash, Omo", "Endorheic Lakes (Abaya, Turkana)", "High evaporation rates, intense irrigation use"]
+      ]
+    },
+    mnemonics: "Mediterranean-bound rivers move West; Indian-bound rivers move Southeast; Rift Valley rivers stay Internal.",
+    color: "teal"
+  },
+  {
+    id: "note_lo",
+    subject: "Logic and Critical Thinking",
+    title: "Identifying Common Informal Fallacies",
+    intro: "Critical thinking is the primary armor against manipulative rhetoric. Recognizing informal fallacies ensures soundness and validity in philosophical and daily arguments.",
+    definition: "An Informal Fallacy is an error in reasoning that occurs in the content, context, or language of an argument, rather than its formal algebraic structure.",
+    explanation: "Common categories of informal fallacies:\n- Fallacies of Relevance: The premises are logically irrelevant to the conclusion. Examples include Ad Hominem (attacking the speaker) and Straw Man (misrepresenting the opponent's argument).\n- Fallacies of Weak Induction: The premises support the conclusion, but not strongly enough. Examples include Hasty Generalization and Appeal to Ignorance.\n- Fallacies of Presumption: The premises assume what they are supposed to prove. Example: Begging the Question (circular reasoning).",
+    diagram: "  [Premise] --- (Weak, irrelevant, or circular connection) -X-> [Conclusion]",
+    summaryTable: {
+      header: ["Fallacy Name", "Logical Error", "Classic Example", "Detection Tip"],
+      rows: [
+        ["Ad Hominem", "Attacks the individual's character instead of the argument", "Disregarding a scientist's findings because of their personality", "Look for personal insults"],
+        ["Straw Man", "Distorts the opponent's position to make it easier to attack", "Claiming that wanting more school funding means you hate the military", "Check original argument"],
+        ["Slippery Slope", "Claims an initial step will inevitably lead to an extreme disaster", "Asserting that if we let students choose seats, schools will burn down", "Identify unproven claims"]
+      ]
+    },
+    mnemonics: "Straw Man = building a fake scarecrow to kick down. Ad Hominem = throwing stones at the person.",
+    color: "indigo"
+  },
+  {
+    id: "note_hi",
+    subject: "History",
+    title: "The Battle of Adwa (1896) & Its Global Legacy",
+    intro: "The Battle of Adwa remains a monumental event in global history, representing a decisive victory for African sovereignty against European colonial aggression.",
+    definition: "The Battle of Adwa was fought on March 1, 1896, between the Ethiopian Empire under Emperor Menelik II and the Kingdom of Italy, securing Ethiopian independence.",
+    explanation: "Key strategic phases of the conflict:\n- The Treaty of Wuchale (1889): Article 17 had a discrepancy. The Amharic version offered Ethiopia optional diplomatic assistance, while the Italian version made Ethiopia a protectorate. This led to conflict.\n- National Mobilization: Empress Taytu Betul urged resistance. Menelik II mobilized over 100,000 unified troops across diverse regions.\n- Tactical Victory: Italian generals were lured into rugged, unfamiliar terrain at Adwa, leading to their decisive encirclement and defeat.",
+    diagram: "   [Treaty Discrepancy] ---> [National Mobilization] ---> [Battle of Adwa Victory]",
+    summaryTable: {
+      header: ["Historical Milestone", "Key Characters", "Primary Cause / Event", "Global Impact"],
+      rows: [
+        ["Treaty of Wuchale", "Menelik II, Antonelli", "Article 17 translation dispute", "Shattered diplomatic trust"],
+        ["Battle of Adwa", "Empress Taytu, Menelik II", "Defensive action on March 1, 1896", "Preserved national sovereignty"],
+        ["Treaty of Addis Ababa", "Ethiopian and Italian envoys", "Italy recognized absolute independence", "Inspirer of Pan-Africanism"]
+      ]
+    },
+    mnemonics: "Adwa: A - African triumph, D - Decisive victory, W - Wuchale rejected, A - Absolute independence.",
+    color: "red"
+  },
+  {
+    id: "note_ch",
+    subject: "Chemistry",
+    title: "Chemical Bonding and Molecular Geometry",
+    intro: "Chemical bonding explains how atoms organize themselves into molecules and lattices. The valence shell structure determines the type of bond and resulting geometry.",
+    definition: "A Chemical Bond is the lasting attractive force between atoms, ions, or molecules that enables the formation of chemical compounds.",
+    explanation: "The three primary types of chemical bonds are:\n1. Ionic Bonds: Complete transfer of valence electrons from a metal to a non-metal, creating electrostatic attraction (e.g., NaCl).\n2. Covalent Bonds: Sharing of electron pairs between non-metal atoms. Can be polar (unequal sharing) or non-polar (equal sharing).\n3. Metallic Bonds: Attraction between a lattice of positive metal cations and a delocalized sea of valence electrons.",
+    diagram: "  Ionic: [Na]+  [Cl]-   (Transfer)   |   Covalent: H - O - H  (Sharing)",
+    summaryTable: {
+      header: ["Bond Type", "Electron Behavior", "Typical Elements", "Key Physical Properties"],
+      rows: [
+        ["Ionic", "Transferred from metal to non-metal", "Metal + Non-metal", "High melting points, conducts in water"],
+        ["Covalent", "Shared between atoms", "Non-metal + Non-metal", "Lower melting points, poor conductors"],
+        ["Metallic", "Delocalized sea of electrons", "Metals only", "Excellent thermal/electrical conductivity, malleable"]
+      ]
+    },
+    mnemonics: "Ionic = I transfer (stealing). Covalent = CO-operating (sharing). Metallic = Mobile sea.",
+    color: "cyan"
+  },
+  {
+    id: "note_ap",
+    subject: "Aptitude",
+    title: "Solving Work and Time Equations",
+    intro: "Work and time problems are staples of quantitative aptitude and logical reasoning exams. Learning the rate-based formulation makes solving these complex problems straightforward.",
+    definition: "Work-Rate is the reciprocal of the time taken to complete a job, representing the fraction of the job completed in one unit of time.",
+    explanation: "Key concepts to solve Work and Time problems:\n- Work Done = Rate of Work * Time Taken. (W = R * T).\n- Combined Work Rate: If Person A takes 'a' hours and Person B takes 'b' hours, their combined rate per hour is (1/a) + (1/b). The time taken together is the reciprocal: (a * b) / (a + b).\n- Inverse Variation: If the number of workers increases, the time taken to complete the same work decreases proportionally: M1 * D1 * H1 = M2 * D2 * H2.",
+    diagram: "  [Worker A: 1/6 job/hr] + [Worker B: 1/12 job/hr] ===> [Combined: 1/4 job/hr] (Takes 4 hours)",
+    summaryTable: {
+      header: ["Scenario", "Formula to Apply", "Variable Meanings", "Sample Calculation"],
+      rows: [
+        ["Two Workers Together", "Time = (a * b) / (a + b)", "a, b = individual times", "6 and 3 hrs -> (6*3)/(6+3) = 2 hrs"],
+        ["Group of Workers", "M1 * D1 = M2 * D2", "M = Men, D = Days", "10 men in 4 days -> 5 men in 8 days"],
+        ["Efficiency Comparison", "Rate1 / Rate2 = Eff1 / Eff2", "Eff = efficiency ratio", "A is twice as fast -> Rate A = 2 * Rate B"]
+      ]
+    },
+    mnemonics: "Think of work rate as speed. Speed up by adding individual rates together!",
+    color: "violet"
+  },
+  {
+    id: "note_ph",
+    subject: "General Physics",
+    title: "Newton's Three Laws of Motion",
+    intro: "Dynamics is the branch of mechanics concerned with the forces that cause motion. Sir Isaac Newton's three laws form the foundation of classical mechanics.",
+    definition: "Force is a vector quantity that represents any interaction which, when unopposed, will change the motion of an object.",
+    explanation: "Newton's three core principles:\n1. First Law (Law of Inertia): An object remains at rest or in uniform motion unless acted upon by a net external force.\n2. Second Law (Law of Acceleration): The acceleration of an object is directly proportional to the net force acting on it and inversely proportional to its mass: F_net = m * a.\n3. Third Law (Action-Reaction): For every action, there is an equal and opposite reaction.",
+    diagram: "  Force = Mass * Acceleration  [ Box m ] ===> Force (F)  ===>  Acceleration (a = F/m)",
+    summaryTable: {
+      header: ["Newton's Law", "Core Principle", "Mathematical Form", "Everyday Example"],
+      rows: [
+        ["First Law", "Inertia (resistance to change)", "If F_net = 0, v = constant", "Passengers jerk forward when a car brakes"],
+        ["Second Law", "Acceleration is proportional to force", "F = m * a", "Pushing an empty cart vs. a loaded heavy cart"],
+        ["Third Law", "Forces always occur in matched pairs", "F_AB = -F_BA", "A rocket launching upwards by pushing exhaust gas down"]
+      ]
+    },
+    mnemonics: "Inertia holds it back, Force speeds it up, Opposites push back!",
+    color: "purple"
+  },
+  {
+    id: "note_en",
+    subject: "Entrepreneurship",
+    title: "The Business Model Canvas Framework",
+    intro: "Starting a business venture requires systematic planning. The Business Model Canvas allows entrepreneurs to visualize, design, and pivot their business model on a single page.",
+    definition: "A Business Model Canvas is a strategic management template for developing new or documenting existing business models.",
+    explanation: "The canvas comprises nine essential building blocks:\n1. Customer Segments: The target audience/users.\n2. Value Propositions: The unique products or services solving customer problems.\n3. Channels: How the value proposition is delivered.\n4. Customer Relationships: The types of interaction established.\n5. Revenue Streams: How the business makes money.\n6. Key Resources: Crucial assets needed to make the model work.\n7. Key Activities: Critical actions to deliver value.\n8. Key Partnerships: External networks/allies.\n9. Cost Structure: Major operational costs.",
+    diagram: "  [ Partners ] -> [ Activities ] -> [ Value Prop ] -> [ Relationships ] -> [ Customers ]\n                    [ Resources ] -> [  Channels  ]\n         [ Cost Structure ]       ========>        [ Revenue Streams ]",
+    summaryTable: {
+      header: ["Canvas Pillar", "Primary Focus", "Key Question to Ask", "Example Strategy"],
+      rows: [
+        ["Value Proposition", "The product/service offering", "What value do we deliver to the customer?", "On-demand educational prep materials"],
+        ["Customer Segments", "Target consumer groups", "For whom are we creating value?", "Ethiopian high school & university students"],
+        ["Revenue Streams", "Financial cash inflows", "How will the business capture value?", "Freemium subscription, study book sales"]
+      ]
+    },
+    mnemonics: "Think of the canvas as: Who (Customers), What (Value), How (Activities/Partners), and How Much (Cost/Revenue).",
+    color: "amber"
+  },
+  {
+    id: "note_sa",
+    subject: "Social Anthropology",
+    title: "Understanding Cultural Relativism",
+    intro: "Anthropology is the holistic study of humanity. Cultural relativism is the foundational theoretical paradigm used to study diverse human societies objectively.",
+    definition: "Cultural Relativism is the principle of understanding an individual's beliefs and activities in terms of that individual's own culture, rather than judging them by external standards.",
+    explanation: "Key dimensions of the anthropological approach:\n- Ethnocentrism (The Opposite): The tendency to view one's own culture as superior and use its values as a benchmark to judge foreign cultures.\n- Methodological Relativism: A scientific tool to suspend moral judgment temporarily to understand the logic behind unfamiliar practices.\n- Ethnography: The primary fieldwork method involving participant observation, where the anthropologist lives within the community to gain an emic (insider) perspective.",
+    diagram: "  Your Culture (Standards) -X-> Ethnocentrism (Bias) -> [ foreign Culture ]\n  foreign Culture <--- Cultural Relativism (Understanding) ---> foreign Culture Context",
+    summaryTable: {
+      header: ["Concept Name", "Core Perspective", "Scientific Goal", "Potential Pitfall"],
+      rows: [
+        ["Ethnocentrism", "Own culture is the gold standard", "Fosters group cohesion but breeds bias", "Cultural intolerance"],
+        ["Cultural Relativism", "Evaluate within local context", "Objective cultural analysis", "Can lead to moral paralysis"],
+        ["Emic Perspective", "Insider point-of-view", "Understand local logic", "Loss of analytical distance"]
+      ]
+    },
+    mnemonics: "Relativism means: 'Compare culture to its own context, not your own backyard!'",
+    color: "rose"
+  },
+  {
+    id: "note_cpp",
+    subject: "C++ Programming",
+    title: "Pointers and Dynamic Memory Management",
+    intro: "C++ is a powerful language that gives developers direct access to computer memory. Mastering pointers and dynamic allocation is essential for professional programming.",
+    definition: "A Pointer is a variable that stores the direct memory address of another variable, rather than holding a direct data value.",
+    explanation: "Core memory operations in C++:\n- Reference Operator (&): Retrieves the memory address of a variable (e.g., `int* p = &x`).\n- Dereference Operator (*): Accesses the value stored at the address pointed to by a pointer.\n- Heap Allocation (`new`): Dynamically allocates memory on the system heap at runtime.\n- Deallocation (`delete`): Releases dynamically allocated heap memory back to the operating system to prevent memory leaks.",
+    diagram: "  Pointer variable 'p' (Address: 0x7ffd) ---> Value: 0x1004 (Address of x) ===> [ Variable x: Value 42 ]",
+    summaryTable: {
+      header: ["Operator / Keyword", "Syntax Example", "Core Operation", "Critical Precaution"],
+      rows: [
+        ["Address-Of (&)", "p = &myVar;", "Gets variable memory address", "Ensure pointer matches variable type"],
+        ["Dereference (*)", "int val = *p;", "Gets value at pointed address", "Never dereference a null/wild pointer"],
+        ["new operator", "int* arr = new int[5];", "Allocates heap memory block", "Always pair with delete to prevent leaks"],
+        ["delete operator", "delete[] arr;", "Frees dynamic memory block", "Avoid double-delete; set pointer to nullptr"]
+      ]
+    },
+    mnemonics: "Ampersand (&) asks 'Where is it?', Asterisk (*) asks 'What is inside it?', delete cleans it up!",
+    color: "blue"
   }
 ];
+
