@@ -24,7 +24,7 @@ import EthioLearnLogo from './components/EthioLearnLogo';
 
 import { getEthiopianDate } from './utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from './utils/audio';
-import { initAuth, googleSignIn, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
+import { initAuth, googleSignIn, googleSignInRedirect, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
 import { User as FirebaseUser } from 'firebase/auth';
 import { supabase } from './utils/supabase';
 import { initSupabaseConfig } from './utils/supabaseClient';
@@ -194,6 +194,7 @@ export default function App() {
   const [googleUser, setGoogleUser] = useState<FirebaseUser | null>(null);
   const [googleToken, setGoogleToken] = useState<string | null>(null);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
+  const [isPopupBlockedApp, setIsPopupBlockedApp] = useState(false);
 
   // Toast systems
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -413,6 +414,7 @@ export default function App() {
 
   const handleGoogleSignIn = async () => {
     try {
+      setIsPopupBlockedApp(false);
       playClickChime();
       const res = await googleSignIn();
       if (res) {
@@ -421,10 +423,26 @@ export default function App() {
         playSuccessChime();
         showToast(`Signed in securely with ${res.user.email}!`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       playFailureChime();
-      showToast("Google connection canceled or failed.");
+      if (err?.isPopupBlocked || err?.code === 'auth/popup-blocked' || err?.message?.includes('popup')) {
+        setIsPopupBlockedApp(true);
+      } else {
+        showToast("Google connection canceled or failed.");
+      }
+    }
+  };
+
+  const handleGoogleSignInRedirect = async () => {
+    try {
+      setIsPopupBlockedApp(false);
+      playClickChime();
+      await googleSignInRedirect();
+    } catch (err: any) {
+      console.error(err);
+      playFailureChime();
+      showToast("Google Redirect Sign-In failed.");
     }
   };
 
@@ -794,6 +812,47 @@ export default function App() {
           </button>
         </div>
       </nav>
+
+      {/* Floating Popup Blocked Dialog for Main App */}
+      {isPopupBlockedApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-[#0c0d12] rounded-2xl border border-slate-200 dark:border-zinc-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-serif text-base font-bold text-slate-800 dark:text-zinc-100 uppercase tracking-wider">
+                  Google Sign-In Popup Blocked
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                  Your browser's popup blocker has blocked the Google Authentication window. This is common when running inside preview frames.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#078930]/5 dark:bg-[#078930]/10 border border-[#078930]/15 dark:border-[#078930]/35 rounded-xl space-y-1.5 text-xs text-slate-700 dark:text-zinc-300">
+              <p>• <strong className="text-slate-800 dark:text-zinc-100">Recommended:</strong> Click the <strong className="text-[#078930] dark:text-emerald-400">"Open in new tab"</strong> button at the top right of this preview to connect securely.</p>
+              <p>• <strong className="text-slate-800 dark:text-zinc-100">Alternative:</strong> Try signing in using the standard redirect flow below.</p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => { playClickChime(); setIsPopupBlockedApp(false); }}
+                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleGoogleSignInRedirect}
+                className="px-4 py-2 bg-[#078930] hover:bg-[#1A7A3C] text-white rounded-xl text-xs font-black uppercase cursor-pointer transition-all"
+              >
+                ⚡ Use Redirect Sign-In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Status Toast notification */}
       {toastMessage && (

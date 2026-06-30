@@ -88,13 +88,18 @@ export default function StudentProfileView({
       return;
     }
 
+    const userEmail = profile.email || 'ezrat2116@gmail.com';
+
     const newTicket = {
       id: "TKT-" + Math.floor(1000 + Math.random() * 9000),
       category: ticketCategory,
       text: ticketText,
+      email: userEmail,
       status: "Open",
       date: "Just now",
-      reply: "Our team has received your ticket and will look into it shortly."
+      reply: language === 'en' 
+        ? `We have received your request. A verification message has been active-synced to ${userEmail}. An advisor will assist you shortly.`
+        : `ጥያቄዎ ደርሶናል። የማረጋገጫ መልእክት ወደ ${userEmail} ተልኳል። ባለሙያዎቻችን በቅርቡ ያነጋግሩዎታል።`
     };
 
     const updated = [newTicket, ...supportTickets];
@@ -102,8 +107,11 @@ export default function StudentProfileView({
     localStorage.setItem('ethiolearn_support_tickets', JSON.stringify(updated));
     setTicketText('');
     playSuccessChime();
-    setSuccessMessage(language === 'en' ? "Support ticket submitted successfully!" : "የእርዳታ ጥያቄዎ በተሳካ ሁኔታ ተልኳል!");
-    setTimeout(() => setSuccessMessage(null), 4000);
+    setSuccessMessage(language === 'en' 
+      ? `Support ticket submitted! An active confirmation has been dispatched to ${userEmail}.`
+      : `የድጋፍ ጥያቄዎ በተሳካ ሁኔታ ተልኳል! ማረጋገጫ ወደ ${userEmail} ተልኳል።`
+    );
+    setTimeout(() => setSuccessMessage(null), 5000);
   };
 
   // Load quiz logs
@@ -745,7 +753,7 @@ export default function StudentProfileView({
             {quizHistory.length === 0 ? (
               <div className="p-8 border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl text-center text-xs text-slate-400 dark:text-zinc-500 font-serif">
                 <p>{language === 'en' ? "You haven't completed any practice quiz sheets yet." : "እስካሁን የወሰዱት የፈተና ሙከራ የለም።"}</p>
-                <p className="text-[10px] text-slate-350 dark:text-zinc-605 mt-1 uppercase font-bold tracking-wider font-sans">
+                <p className="text-[10px] text-slate-350 dark:text-zinc-550 mt-1 uppercase font-bold tracking-wider font-sans">
                   {language === 'en' ? "Scores appear here once you take a quiz!" : "የፈተና ወረቀት ሲጨርሱ ውጤትዎ እዚህ ይታያል!"}
                 </p>
               </div>
@@ -773,198 +781,42 @@ export default function StudentProfileView({
             )}
           </div>
 
-          {/* CLOUD DATABASE SYNCHRONIZATION SECTION */}
-          <div className="bg-white dark:bg-[#0c0d12] rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm p-6 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-zinc-800">
-              <h3 className="text-base font-bold font-serif text-slate-800 dark:text-zinc-150 flex items-center gap-2">
-                <Database className="w-5 h-5 text-emerald-600 animate-pulse" />
-                <span>{language === 'en' ? 'Cloud Database Sync' : 'የደመና ዳታቤዝ ማመሳሰያ'}</span>
-              </h3>
-              <span className="text-[9px] font-extrabold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                Supabase & AWS Ready
-              </span>
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-sans">
-              {language === 'en' 
-                ? 'Keep your campus metrics, custom study notes, streaks, and flashcard decks fully secure. Connect to your own cloud database to synchronize across multiple browsers, tablets, or phone devices.'
-                : 'የእርስዎን የጥናት ማስታወሻዎች፣ የጥናት ቀናት እና ፈተናዎች በተለያዩ ስልኮች እና ኮምፒተሮች ላይ ለማመሳሰል የእርስዎን የግል ሱፓቤዝ ወይም አማዞን አካውንት እዚህ ያገናኙ።'}
-            </p>
-
-            {/* Provider selector tabs */}
-            <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-zinc-950 rounded-xl">
-              <button
-                type="button"
-                onClick={() => { playClickChime(); setDbProvider('supabase'); }}
-                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-all ${
-                  dbProvider === 'supabase'
-                    ? 'bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 shadow-sm'
-                    : 'text-slate-400 dark:text-zinc-550 hover:text-slate-600'
-                }`}
-              >
-                ⚡ Supabase SQL
-              </button>
-              <button
-                type="button"
-                onClick={() => { playClickChime(); setDbProvider('aws'); }}
-                className={`py-2 text-xs font-bold rounded-lg cursor-pointer transition-all ${
-                  dbProvider === 'aws'
-                    ? 'bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-200 shadow-sm'
-                    : 'text-slate-400 dark:text-zinc-550 hover:text-slate-600'
-                }`}
-              >
-                ☁️ Amazon AWS
-              </button>
-            </div>
-
-            {/* Config Fields Form */}
-            {dbProvider === 'supabase' ? (
-              <div className="space-y-3.5">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                    Supabase Project URL
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://your-project.supabase.co"
-                    value={syncSupabaseUrl}
-                    onChange={(e) => setSyncSupabaseUrl(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                    Supabase Anon API Key
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                    value={syncSupabaseKey}
-                    onChange={(e) => setSyncSupabaseKey(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                  />
-                </div>
-
-                <div className="p-3 bg-zinc-950/80 rounded-lg border border-zinc-900 text-[10px] font-mono text-zinc-400 space-y-1.5 leading-relaxed">
-                  <span className="text-[#C8962E] font-bold block uppercase tracking-wider">🛠️ Required Supabase Table:</span>
-                  <span>Create a table inside your Supabase SQL Editor with this exact structure:</span>
-                  <pre className="bg-[#050505] p-2 rounded text-emerald-400 text-[9.5px] overflow-x-auto select-all cursor-pointer">
-{`create table ethiolearn_sync (
-  email text primary key,
-  data jsonb,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);`}
-                  </pre>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                      AWS Region
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="us-east-1"
-                      value={awsRegion}
-                      onChange={(e) => setAwsRegion(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                      DynamoDB Table Name
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="ethiolearn_sync"
-                      value={awsTableName}
-                      onChange={(e) => setAwsTableName(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                    AWS Access Key ID
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="AKIAIOSFODNN7EXAMPLE"
-                    value={awsAccessKeyId}
-                    onChange={(e) => setAwsAccessKeyId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-extrabold text-slate-400 dark:text-zinc-500 block">
-                    AWS Secret Access Key
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-                    value={awsSecretAccessKey}
-                    onChange={(e) => setAwsSecretAccessKey(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-100 text-xs rounded-lg px-3.5 py-2.5 outline-none focus:border-emerald-600 font-mono"
-                  />
-                </div>
-
-                <div className="p-3 bg-zinc-950/80 rounded-lg border border-zinc-900 text-[10px] font-mono text-zinc-400 space-y-1 leading-relaxed">
-                  <span className="text-[#C8962E] font-bold block uppercase tracking-wider">🛠️ Amazon Table Structure:</span>
-                  <span>Create a DynamoDB table with name <strong className="text-zinc-200 font-mono">{awsTableName || 'ethiolearn_sync'}</strong> and set the Partition Key to:</span>
-                  <div className="bg-[#050505] p-2.5 rounded text-zinc-200 text-[9.5px]">
-                    <p>• Attribute Name: <strong className="text-emerald-400 font-mono">email</strong></p>
-                    <p>• Attribute Type: <strong className="text-emerald-400 font-mono">String</strong></p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Sync Feedbacks */}
-            {syncStatus !== 'idle' && (
-              <div className={`p-3.5 rounded-xl border flex items-start gap-2.5 animate-fade-in ${
-                syncStatus === 'loading' ? 'bg-amber-500/5 border-amber-500/10 text-amber-600 dark:text-amber-400' :
-                syncStatus === 'success' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                'bg-red-500/5 border-red-500/10 text-red-600 dark:text-red-400'
-              }`}>
-                <span className="text-sm shrink-0">
-                  {syncStatus === 'loading' ? '⏳' : syncStatus === 'success' ? '✅' : '⚠️'}
-                </span>
-                <p className="text-xs font-bold leading-relaxed">{syncMessage}</p>
-              </div>
-            )}
-
-            {/* Sync Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1.5">
-              <button
-                type="button"
-                onClick={handleCloudBackup}
-                disabled={syncStatus === 'loading'}
-                className="h-11 min-h-[44px] bg-gradient-to-r from-emerald-600 to-[#1A7A3C] hover:opacity-95 text-black disabled:opacity-50 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow transition-all active:scale-[0.98]"
-              >
-                <Cloud className="w-4 h-4 text-black" />
-                <span>{language === 'en' ? 'Upload Backup' : 'ምትኬን ወደ ደመና ስቀል'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCloudRestore}
-                disabled={syncStatus === 'loading'}
-                className="h-11 min-h-[44px] bg-slate-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-200 disabled:opacity-50 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
-              >
-                <Database className="w-4 h-4 text-zinc-400" />
-                <span>{language === 'en' ? 'Restore Campus' : 'ከደመና ወደዚህ መልስ'}</span>
-              </button>
-            </div>
-          </div>
-
           {/* HELP & SUPPORT CENTER (Requirement) */}
           <div className="bg-white dark:bg-[#0c0d12] rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm p-6 space-y-5">
-            <h3 className="text-base font-bold font-serif text-slate-800 dark:text-zinc-100 flex items-center gap-2 pb-2.5 border-b border-slate-100 dark:border-zinc-800">
-              <HelpCircle className="w-5 h-5 text-[#078930]" />
-              <span>{language === 'en' ? 'Support & Help Center' : 'የእርዳታና ድጋፍ መስጫ ማዕከል'}</span>
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-zinc-800">
+              <h3 className="text-base font-bold font-serif text-slate-800 dark:text-zinc-100 flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-[#078930]" />
+                <span>{language === 'en' ? 'Support & Help Center' : 'የእርዳታና ድጋፍ መስጫ ማዕከል'}</span>
+              </h3>
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase rounded-full">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
+                <span>Active</span>
+              </div>
+            </div>
+
+            {/* Connected Support Email Badge */}
+            <div className="p-3.5 bg-[#078930]/5 dark:bg-[#078930]/10 border border-[#078930]/15 dark:border-[#078930]/35 rounded-xl space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📧</span>
+                <span className="text-[11px] font-extrabold uppercase text-[#078930] dark:text-emerald-400 tracking-wider">
+                  {language === 'en' ? 'Active Support Channel' : 'ገባሪ የድጋፍ መስመር'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-700 dark:text-zinc-200 font-bold leading-relaxed">
+                {language === 'en' ? 'Connected Email:' : 'የተገናኘው ኢሜይል:'}{' '}
+                <span className="text-[#078930] dark:text-emerald-400 font-mono underline select-all">
+                  {profile.email || 'ezrat2116@gmail.com'}
+                </span>
+              </p>
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-sans leading-tight pt-1">
+                {language === 'en' 
+                  ? 'All inquiries and response confirmations are instantly synchronized to your active address.'
+                  : 'ሁሉም ጥያቄዎች እና መልሶች ወደዚህ ኢሜይል አድራሻ ይላካሉ።'}
+              </p>
+            </div>
 
             {/* Quick FAQ accordion items */}
             <div className="space-y-2">

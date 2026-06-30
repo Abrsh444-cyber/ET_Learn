@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BookOpen, Search, Download, Sparkles, AlertCircle, Play, FileText, Bot, Compass, CheckCircle, ChevronDown, Award, RefreshCw, Plus,
-  BookOpenCheck, Sliders, Sun, Moon, Type, ChevronLeft, ChevronRight, Share2, HelpCircle, X, Check, Database, AlertTriangle, MessageSquare
+  BookOpenCheck, Sliders, Sun, Moon, Type, ChevronLeft, ChevronRight, Share2, HelpCircle, X, Check, Database, AlertTriangle, MessageSquare,
+  ExternalLink
 } from 'lucide-react';
 import { StudentProfile } from '../types';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
@@ -46,6 +47,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Comprehensive Ministry Exam prep module covering differential calculus, limits, sequence notation, and solid geometry calculations with Amharic translations.',
     languageSupport: 'Bilingual',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Mathematics-Student-Textbook.pdf'
   },
   {
     id: 'g12_english',
@@ -57,6 +59,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Specially structured to help high school students excel in national standardized English layouts, active-passive voice transitions, and comprehension skills.',
     languageSupport: 'Bilingual',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-English-Student-Textbook.pdf'
   },
   {
     id: 'g12_physics',
@@ -68,6 +71,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Advanced matric revision guide summarizing magnetic flux equations, transformers, line spectra, photoelectric effect, and radioactive half-lives.',
     languageSupport: 'Bilingual',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Physics-Student-Textbook.pdf'
   },
   {
     id: 'g12_chemistry',
@@ -79,6 +83,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Detailed study on buffer actions, pH indicators, Lewis theories, galvanic cells, and standard IUPAC nomenclature schemes.',
     languageSupport: 'Bilingual',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Chemistry-Student-Textbook.pdf'
   },
   {
     id: 'g12_biology',
@@ -90,6 +95,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Targeted revision for national entrance exam genetics calculations, population genetics rules, and environmental issues facing Ethiopia.',
     languageSupport: 'Bilingual',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Biology-Student-Textbook.pdf'
   },
   {
     id: 'g12_aptitude',
@@ -101,6 +107,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Specially curated reasoning builder focusing on typical math aptitude patterns, visual sequences, and critical thinking matrices for entrance exams.',
     languageSupport: 'Bilingual',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Aptitude-And-Analytical-Reasoning.pdf'
   },
 
   // --- UNIVERSITY ---
@@ -114,6 +121,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Standard textbook helper matching Ethiopian public universities curriculum. Includes truth tables, complex algebra, and functions conversion guidelines with AI step solver.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Freshman-Mathematics-Math-1011-Module.pdf'
   },
   {
     id: 'uni_applied_math',
@@ -125,6 +133,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Advanced applied engineering mathematical formulas. Features trigonometric substitutions, Taylor series, and volume calculations via double integrals.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Applied-Calculus-Math-1012-Module.pdf'
   },
   {
     id: 'uni_english',
@@ -136,6 +145,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Core freshman curriculum guidebook to excel in university-level comprehension, syntactic styles, and academic arguments.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Communicative-English-Skills-I-FLEn-1011.pdf'
   },
   {
     id: 'uni_english_2',
@@ -147,6 +157,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Focuses on peer essays editing, bibliography formatting, and writing logical, structured reports as a university scholar.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Writing-Skills-II-FLEn-1012.pdf'
   },
   {
     id: 'uni_physics',
@@ -158,6 +169,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Rigorous freshman guide centered on physical concepts: work-kinetic calculations, harmonic pendulum frequencies, and ray tracing.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/General-Physics-Phys-1011-Module.pdf'
   },
   {
     id: 'uni_chemistry',
@@ -169,6 +181,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'University level molecular orbital theory, orbital hybridization, boiling point elevations, and activation energy calculations with AI solver tutorials.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/General-Chemistry-Chem-1011-Module.pdf'
   },
   {
     id: 'uni_biology',
@@ -180,6 +193,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Study of cellular respiration pathways, ATP models, enzyme activity limits, prokaryote structures, and plant physiology.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/General-Biology-Biol-1011-Module.pdf'
   },
   {
     id: 'uni_anthropology',
@@ -191,6 +205,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Explore human diversity, tribal custom definitions, ethnographic field research methods, and pluralistic contexts in the Horn of Africa.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Social-Anthropology-Anth-1012-Module.pdf'
   },
   {
     id: 'uni_logic',
@@ -202,6 +217,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Unlock argumentative rigor. Learn to outline deductive logic structures, identify cognitive traps, and construct formal proofs with AI reasoning explanations.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Introduction-to-Logic-and-Critical-Thinking-Phil-1011.pdf'
   },
   {
     id: 'uni_psychology',
@@ -213,6 +229,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Deep dive into neuropsychology, Pavlovian conditioning mechanisms, proactive interference, developmental stages, and stress tolerance.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/General-Psychology-and-Life-Skills-Pscy-1011.pdf'
   },
   {
     id: 'uni_inclusiveness',
@@ -224,6 +241,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Framework of special needs learning support, behavioral adjustments, visual or hearing aids integrations, and human dignity principles.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Inclusiveness-Incl-1012-Module.pdf'
   },
   {
     id: 'uni_entrepreneurship',
@@ -235,6 +253,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Essential entrepreneurial toolbox. Covers competitive audits, value propositions, resource constraints, startup funding hacks, and local taxation.',
     languageSupport: 'English Only',
     proRequired: false,
+    pdfUrl: 'https://kehulum.com/uploads/books/Freshman-Entrepreneurship-Mgmt-1012.pdf'
   },
   {
     id: 'uni_cpp',
@@ -246,6 +265,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Hands-on programming guide. Master logical arrays, sequential flows, parameter passing, and syntax structures with custom AI code-review solver tools.',
     languageSupport: 'English Only',
     proRequired: true,
+    pdfUrl: 'https://kehulum.com/uploads/books/Introduction-to-Computer-Programming-Cplusplus.pdf'
   }
 ];
 
@@ -1030,21 +1050,53 @@ Ensure the layout utilizes clear headers, a detailed markdown text explanation, 
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-3 overflow-hidden rounded-2xl border-2 border-emerald-650 bg-slate-900 text-white shadow-inner"
+                      className="mt-3 overflow-hidden rounded-2xl border-2 border-emerald-600 bg-slate-900 text-white shadow-inner"
                     >
-                      <div className="px-3 py-2 bg-emerald-800/20 border-b border-zinc-800 flex items-center justify-between text-xs font-bold text-emerald-450">
-                        <span className="truncate">📄 PDF View: {activeModule.title}</span>
-                        <button 
-                          onClick={() => setViewingPdfMode(false)}
-                          className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
-                        >
-                          ✕
-                        </button>
+                      <div className="px-3 py-2 bg-emerald-950/40 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-emerald-400">
+                        <span className="truncate flex items-center gap-1.5">
+                          📄 {activeModule.title}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <a 
+                            href={activeModule.pdfUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-black text-[10px] font-black uppercase rounded flex items-center gap-1 transition-colors"
+                            onClick={() => playSuccessChime()}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Open New Tab ↗</span>
+                          </a>
+                          <button 
+                            onClick={() => setViewingPdfMode(false)}
+                            className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <div className="relative w-full h-[550px] bg-slate-800">
+
+                      {/* Helper box */}
+                      <div className="p-2 bg-amber-500/10 border-b border-zinc-800 text-[11px] text-amber-300 flex items-center gap-1.5 px-3">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                        <span className="leading-tight">
+                          If the textbook fails to render below, tap 
+                          <a 
+                            href={activeModule.pdfUrl} 
+                            target="_blank" 
+                            rel="noreferrer noopener" 
+                            className="underline mx-1 font-bold text-white hover:text-emerald-400"
+                          >
+                            Open New Tab
+                          </a> 
+                          to read or download directly!
+                        </span>
+                      </div>
+
+                      <div className="relative w-full h-[600px] bg-slate-950">
                         <iframe 
-                          src={`${activeModule.pdfUrl}#toolbar=1`}
-                          title={`PDF Textbook: ${activeModule.title}`}
+                          src={`https://docs.google.com/gview?url=${encodeURIComponent(activeModule.pdfUrl)}&embedded=true`}
+                          title={`PDF Textbook Viewer: ${activeModule.title}`}
                           className="w-full h-full border-0"
                           referrerPolicy="no-referrer"
                         />

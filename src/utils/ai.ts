@@ -173,20 +173,34 @@ export async function submitClaudeChat(
   }
 }
 
-// Generate an interactive quiz with 5 multiple-choice questions
+// Generate an interactive quiz with custom parameters and specific needs
 export async function generateQuizAI(
   topic: string,
   subject: string,
-  apiKey: string
+  apiKey: string,
+  difficulty?: string,
+  qCount?: number,
+  customNeeds?: string
 ): Promise<any[]> {
-  const promptMessage = `Generate a high-quality academic practice quiz on the topic: "${topic}" under the subject "${subject}".
-Format the response strictly as a JSON array of 5 MCQ objects. Do NOT wrapper it inside any markdown ticks, do NOT write any introductory or concluding text. Return raw JSON array only.
+  const count = qCount || 5;
+  const diffStr = difficulty || 'medium';
+  let promptMessage = `Generate a high-quality academic practice quiz on the topic: "${topic}" under the subject "${subject}".
+The target difficulty level is: ${diffStr}.
+Please generate exactly ${count} multiple-choice questions.`;
+
+  if (customNeeds && customNeeds.trim()) {
+    promptMessage += `\n\nCRITICAL CUSTOMER NEED/CUSTOMIZATION REQUEST:
+"${customNeeds}"
+Please customize the questions, the level of depth, the context, language style, and/or focus area strictly according to the request above. For instance, if they ask for more equations, Amharic-mixed explanations, specific exam focal points, or real-life Ethiopian examples, satisfy that need completely.`;
+  }
+
+  promptMessage += `\n\nFormat the response strictly as a JSON array of ${count} MCQ objects. Do NOT wrapper it inside any markdown ticks, do NOT write any introductory or concluding text. Return raw JSON array only.
 
 Each object in the array must contain:
-1. "question": String (the exam question in English, with optional Amharic keywords where relevant)
+1. "question": String (the exam question, written with highest clarity, matching the requested customization)
 2. "options": Array of 4 strings (unique options, with local context analogies)
 3. "correctAnswer": String (must exactly match one of the elements in the "options" array)
-4. "explanation": String (detailed educational explanation in a encouraging tone with traditional analogies if possible)`;
+4. "explanation": String (detailed educational explanation in an encouraging tone with traditional analogies if possible, explicitly satisfying any custom needs/questions the user had)`;
 
   const messages: ChatMessage[] = [
     { role: 'user', content: promptMessage }

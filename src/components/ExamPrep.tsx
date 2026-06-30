@@ -177,6 +177,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
   const [selectedSubject, setSelectedSubject] = useState(enrolledSubjects[0] || "Emerging Technologies");
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [qCount, setQCount] = useState<number>(5);
+  const [customNeeds, setCustomNeeds] = useState<string>('');
 
   // Load language settings from localStorage
   const [language, setLanguage] = useState<'en' | 'am'>(() => {
@@ -281,7 +282,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
 
     try {
       const topic = `curriculum of ${selectedSubject} of grade high standards containing exactly ${qCount} multiple choice questions`;
-      const questions = await generateQuizAI(topic, selectedSubject, apiKey);
+      const questions = await generateQuizAI(topic, selectedSubject, apiKey, difficulty, qCount, customNeeds);
       if (questions && questions.length > 0) {
         setExamQuestions(questions.slice(0, qCount));
         setExamMode('active');
@@ -495,6 +496,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
                   {[5, 10, 20].map((count) => (
                     <button
                       key={count}
+                      type="button"
                       onClick={() => { setQCount(count); playClickChime(); }}
                       className={`py-2 text-xs font-bold rounded-lg cursor-pointer ${
                         qCount === count ? 'bg-[#078930] text-white shadow-sm' : 'text-slate-500'
@@ -504,6 +506,37 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Difficulty level selection */}
+              <div className="space-y-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label>{language === 'en' ? 'Difficulty / ደረጃ' : 'የክብደት ደረጃ'}</label>
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                  {(['easy', 'medium', 'hard'] as const).map((diff) => (
+                    <button
+                      key={diff}
+                      type="button"
+                      onClick={() => { setDifficulty(diff); playClickChime(); }}
+                      className={`py-2 text-xs font-bold rounded-lg cursor-pointer capitalize ${
+                        difficulty === diff ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      {language === 'en' ? diff : (diff === 'easy' ? 'ቀላል' : diff === 'medium' ? 'መካከለኛ' : 'ከባድ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom needs or specific target area */}
+              <div className="space-y-1 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <label>{language === 'en' ? 'Specific Request / Custom Needs' : 'የተለየ ጥያቄ / የትኩረት ቦታ'}</label>
+                <textarea
+                  value={customNeeds}
+                  onChange={(e) => setCustomNeeds(e.target.value)}
+                  placeholder={language === 'en' ? 'e.g., focus on C++ pointers, conceptual questions, Amharic-English mixed explanations, etc.' : 'ምሳሌ፦ ማብራሪያው በአማርኛ ይሁን፣ በአብዛኛው ጽንሰ-ሀሳቦች ላይ ያተኩር...'}
+                  rows={2}
+                  className="w-full bg-slate-50 border border-slate-200 text-slate-800 font-sans text-xs font-semibold rounded-xl py-2 px-3 outline-none focus:border-emerald-600 resize-none placeholder-slate-400 normal-case"
+                />
               </div>
 
               {/* Action Buttons */}

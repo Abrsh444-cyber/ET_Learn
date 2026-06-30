@@ -7,10 +7,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile } from '../types';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
-import { googleSignIn } from '../utils/workspace';
+import { googleSignIn, googleSignInRedirect } from '../utils/workspace';
+import { getSupabase, saveSupabaseCredentials, initSupabaseConfig } from '../utils/supabaseClient';
 import { 
   Key, User, Landmark, GraduationCap, ArrowRight, Info, Eye, EyeOff, 
-  Mail, Lock, LogIn, UserPlus, ArrowLeft, ShieldAlert, CheckCircle 
+  Mail, Lock, LogIn, UserPlus, ArrowLeft, ShieldAlert, CheckCircle, Database
 } from 'lucide-react';
 import EthioLearnLogo from './EthioLearnLogo';
 import StudentAvatarSelector from './StudentAvatarSelector';
@@ -60,10 +61,18 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   ]);
   const [claudeApiKey, setClaudeApiKey] = useState('');
   
+  // Supabase explicit configuration states
+  const [supabaseUrlInput, setSupabaseUrlInput] = useState(() => localStorage.getItem('ethiolearn_supabase_url') || '');
+  const [supabaseKeyInput, setSupabaseKeyInput] = useState(() => localStorage.getItem('ethiolearn_supabase_key') || '');
+  const [showSupaConfig, setShowSupaConfig] = useState(false);
+  const [isSupaConfigured, setIsSupaConfigured] = useState(() => !!getSupabase());
+  const [loading, setLoading] = useState(false);
+  
   // Interface toggles
   const [showKey, setShowKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isPopupBlocked, setIsPopupBlocked] = useState(false);
 
   // Accounts list from local state
   const [registeredAccounts, setRegisteredAccounts] = useState<AccountInfo[]>([]);
@@ -102,6 +111,14 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
 
   // Fetch accounts on load
   useEffect(() => {
+    async function loadConfig() {
+      await initSupabaseConfig();
+      setIsSupaConfigured(!!getSupabase());
+      setSupabaseUrlInput(localStorage.getItem('ethiolearn_supabase_url') || '');
+      setSupabaseKeyInput(localStorage.getItem('ethiolearn_supabase_key') || '');
+    }
+    loadConfig();
+
     try {
       const stored = localStorage.getItem('ethiolearn_accounts');
       if (stored) {
@@ -142,6 +159,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const handleGoogleAuth = async () => {
     try {
       setAuthError(null);
+      setIsPopupBlocked(false);
       playClickChime();
       const res = await googleSignIn();
       if (res) {
@@ -210,12 +228,49 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       }
     } catch (err: any) {
       console.error('Google onboarding auth failed:', err);
-      setAuthError('Google Sign-In was canceled or encountered an issue. Please try again.');
+      playFailureChime();
+      if (err?.isPopupBlocked || err?.code === 'auth/popup-blocked' || err?.message?.includes('popup')) {
+        setIsPopupBlocked(true);
+      } else {
+        setAuthError(err.message || 'Google Sign-In was canceled or encountered an issue. Please try again.');
+      }
+    }
+  };
+
+  const handleGoogleRedirect = async () => {
+    try {
+      setAuthError(null);
+      setIsPopupBlocked(false);
+      playClickChime();
+      await googleSignInRedirect();
+    } catch (err: any) {
+      console.error('Google onboarding redirect failed:', err);
+      setAuthError(err.message || 'Google Redirect Sign-In encountered an issue. Please try again.');
       playFailureChime();
     }
   };
 
-  const handleSignIn = (e: React.FormEvent) => {
+  const handleSaveSupaConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    playClickChime();
+    if (!supabaseUrlInput.trim() || !supabaseKeyInput.trim()) {
+      setAuthError("Both Supabase URL and Anon Key are required.");
+      playFailureChime();
+      return;
+    }
+    try {
+      saveSupabaseCredentials(supabaseUrlInput.trim(), supabaseKeyInput.trim());
+      setIsSupaConfigured(true);
+      setShowSupaConfig(false);
+      setAuthError(null);
+      playSuccessChime();
+    } catch (err: any) {
+      setAuthError(`Failed to save config: ${err.message || err}`);
+      playFailureChime();
+    }
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
@@ -228,7 +283,82 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       return;
     }
 
-    // Lookup credentials
+    setLoading(true);
+
+    const supa = getSupabase();
+    if (supa) {
+      try {
+        const { data, error } = await supa.auth.signInWithPassword({
+          email: emailTrim,
+          password: passwordTrim
+        });
+
+        if (error) {
+          setAuthError(`Supabase Sign-In: ${error.message}`);
+          playFailureChime();
+          setLoading(false);
+          return;
+        }
+
+        // Successfully signed in with Supabase
+        const user = data.user;
+        const metadata = user?.user_metadata || {};
+        
+        const foundLocal = registeredAccounts.find(acc => acc.email.toLowerCase() === emailTrim);
+        const profile: StudentProfile = foundLocal?.profile || {
+          name: metadata.name || emailTrim.split('@')[0],
+          email: emailTrim,
+          university: metadata.university || "Wolkite University",
+          year: metadata.year || "Grade 12",
+          subjects: metadata.subjects || selectedSubjects,
+          claudeApiKey: '',
+          dailyGoalHours: 2,
+          theme: 'dark',
+          language: 'both',
+          avatar: metadata.avatar || 'star',
+          isRegistered: true,
+          unregisteredAICredits: 5
+        };
+
+        // Ensure it's stored locally for fast offline retrieval/fallback
+        if (!foundLocal) {
+          const newAccount: AccountInfo = {
+            email: emailTrim,
+            passwordEncrypted: passwordTrim,
+            rememberMe: rememberMe,
+            profile
+          };
+          const updated = [...registeredAccounts, newAccount];
+          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
+          setRegisteredAccounts(updated);
+        }
+
+        localStorage.setItem('ethiolearn_active_email', emailTrim);
+
+        if (rememberMe) {
+          localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
+            email: emailTrim,
+            password: passwordTrim,
+            rememberMe: true
+          }));
+        } else {
+          localStorage.removeItem('ethiolearn_remember_login');
+        }
+
+        playSuccessChime();
+        setLoading(false);
+        onComplete({ ...profile, isRegistered: true });
+        return;
+      } catch (err: any) {
+        console.error('Supabase Sign-In failed:', err);
+        setAuthError(`Supabase connection failed: ${err.message || err}`);
+        playFailureChime();
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Lookup credentials locally
     const found = registeredAccounts.find(
       acc => acc.email.toLowerCase() === emailTrim && acc.passwordEncrypted === passwordTrim
     );
@@ -236,6 +366,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     if (!found) {
       setAuthError("Incorrect password or email. Please check your credentials.");
       playFailureChime();
+      setLoading(false);
       return;
     }
 
@@ -265,6 +396,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     } catch (e) {}
 
     playSuccessChime();
+    setLoading(false);
     
     // Pass completed profile to parent to load user session
     onComplete({ ...found.profile, isRegistered: true });
@@ -289,7 +421,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
 
@@ -315,11 +447,48 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       return;
     }
 
-    // Check pre-existing accounts
+    setLoading(true);
+
+    const supa = getSupabase();
+    if (supa) {
+      try {
+        const { data, error } = await supa.auth.signUp({
+          email: emailTrim,
+          password: passwordTrim,
+          options: {
+            data: {
+              name: nameTrim,
+              university: university.trim() || "Wolkite University",
+              year,
+              avatar,
+              subjects: selectedSubjects
+            }
+          }
+        });
+
+        if (error) {
+          setAuthError(`Supabase Auth Sign-Up Error: ${error.message}`);
+          playFailureChime();
+          setLoading(false);
+          return;
+        }
+
+        // Successfully registered with Supabase Auth!
+      } catch (err: any) {
+        console.error('Supabase Sign-Up failed:', err);
+        setAuthError(`Supabase Connection Failed: ${err.message || err}`);
+        playFailureChime();
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Check pre-existing accounts locally to avoid visual duplicates
     const exists = registeredAccounts.some(acc => acc.email.toLowerCase() === emailTrim);
     if (exists) {
       setAuthError("An academic account with this email address already exists.");
       playFailureChime();
+      setLoading(false);
       return;
     }
 
@@ -365,6 +534,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     } catch (e) {}
 
     playSuccessChime();
+    setLoading(false);
     onComplete(profile);
   };
 
@@ -883,6 +1053,138 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               </div>
             )}
 
+            {/* Supabase Status / Config Collapsible */}
+            <div className="bg-zinc-950/60 border border-zinc-900 rounded-xl p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className={`w-4 h-4 ${isSupaConfigured ? "text-emerald-500" : "text-amber-500"}`} />
+                  <span className="text-[11px] font-bold tracking-wider uppercase text-zinc-300">
+                    Supabase Authentication
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-block w-2 h-2 rounded-full ${isSupaConfigured ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"}`} />
+                  <span className="text-[9px] font-mono text-zinc-400">
+                    {isSupaConfigured ? "CONNECTED" : "LOCAL BYPASS"}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="text-[10px] text-zinc-400 leading-normal">
+                {isSupaConfigured ? (
+                  <p>All student profiles, enrollments, and academic credentials are securely authenticated and synced using your custom <strong className="text-emerald-400">Supabase SQL database</strong>.</p>
+                ) : (
+                  <p>Supabase connection is not active. The app will run in <strong className="text-amber-400">Offline Local Storage mode</strong>.</p>
+                )}
+              </div>
+
+              <div className="pt-1.5 border-t border-zinc-900">
+                <button
+                  type="button"
+                  onClick={() => { playClickChime(); setShowSupaConfig(!showSupaConfig); }}
+                  className="text-[10px] text-[#C8962E] hover:underline font-bold tracking-wide flex items-center gap-1"
+                >
+                  ⚙️ {showSupaConfig ? "Hide Database Settings" : "Configure Custom Supabase DB"}
+                </button>
+              </div>
+
+              {showSupaConfig && (
+                <div className="space-y-3 pt-2 text-left">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                      Supabase Project URL
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://your-project-ref.supabase.co"
+                      value={supabaseUrlInput}
+                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                      Supabase Anon Public API Key
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      value={supabaseKeyInput}
+                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1.5">
+                    {localStorage.getItem('ethiolearn_supabase_url') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickChime();
+                          localStorage.removeItem('ethiolearn_supabase_url');
+                          localStorage.removeItem('ethiolearn_supabase_key');
+                          setSupabaseUrlInput('');
+                          setSupabaseKeyInput('');
+                          setIsSupaConfigured(false);
+                          setShowSupaConfig(false);
+                          playSuccessChime();
+                        }}
+                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-300 rounded text-[10px] font-bold transition-all"
+                      >
+                        Reset / Disconnect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveSupaConfig}
+                      className="px-3 py-1 bg-[#C8962E] hover:bg-[#b08123] text-black rounded text-[10px] font-black transition-all cursor-pointer"
+                    >
+                      Save & Connect DB
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {isPopupBlocked && (
+              <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-xl space-y-3">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-base">⚠️</span>
+                  <div>
+                    <p className="font-extrabold text-amber-300 uppercase tracking-wider text-[11.5px]">Popup Window Blocked</p>
+                    <p className="text-zinc-300 mt-1 leading-relaxed text-[11px]">
+                      Since you are running EthioLearn inside the AI Studio Preview panel, your browser's popup blocker has blocked Google Sign-In.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="pl-6 space-y-1.5 text-[10.5px] text-zinc-400">
+                  <p>• <strong className="text-zinc-200">Option A:</strong> Click the <strong className="text-amber-400">"Open in new tab"</strong> icon at the top right of your preview frame to sign in cleanly.</p>
+                  <p>• <strong className="text-zinc-200">Option B:</strong> Try the standard redirect sign-in flow below.</p>
+                </div>
+
+                <div className="pt-1.5 pl-6 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGoogleRedirect}
+                    className="px-3 py-1.5 bg-[#C8962E] hover:bg-[#b08123] text-black font-extrabold rounded-lg text-[10.5px] transition-all cursor-pointer"
+                  >
+                    ⚡ Try Redirect Sign-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setIsPopupBlocked(false); }}
+                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-lg text-[10.5px] transition-all cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Quick Login Section (if accounts are stored) */}
             {registeredAccounts.length > 0 && (
               <div className="space-y-3">
@@ -1052,6 +1354,138 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               <div className="p-3 bg-red-950/20 border border-red-500/30 text-red-400 text-xs rounded-lg flex items-start gap-2">
                 <ShieldAlert className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
                 <p>{authError}</p>
+              </div>
+            )}
+
+            {/* Supabase Status / Config Collapsible */}
+            <div className="bg-zinc-950/60 border border-zinc-900 rounded-xl p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Database className={`w-4 h-4 ${isSupaConfigured ? "text-emerald-500" : "text-amber-500"}`} />
+                  <span className="text-[11px] font-bold tracking-wider uppercase text-zinc-300">
+                    Supabase Authentication
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-block w-2 h-2 rounded-full ${isSupaConfigured ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"}`} />
+                  <span className="text-[9px] font-mono text-zinc-400">
+                    {isSupaConfigured ? "CONNECTED" : "LOCAL BYPASS"}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="text-[10px] text-zinc-400 leading-normal">
+                {isSupaConfigured ? (
+                  <p>All student profiles, enrollments, and academic credentials are securely authenticated and synced using your custom <strong className="text-emerald-400">Supabase SQL database</strong>.</p>
+                ) : (
+                  <p>Supabase connection is not active. The app will run in <strong className="text-amber-400">Offline Local Storage mode</strong>.</p>
+                )}
+              </div>
+
+              <div className="pt-1.5 border-t border-zinc-900">
+                <button
+                  type="button"
+                  onClick={() => { playClickChime(); setShowSupaConfig(!showSupaConfig); }}
+                  className="text-[10px] text-[#C8962E] hover:underline font-bold tracking-wide flex items-center gap-1"
+                >
+                  ⚙️ {showSupaConfig ? "Hide Database Settings" : "Configure Custom Supabase DB"}
+                </button>
+              </div>
+
+              {showSupaConfig && (
+                <div className="space-y-3 pt-2 text-left">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                      Supabase Project URL
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://your-project-ref.supabase.co"
+                      value={supabaseUrlInput}
+                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                      Supabase Anon Public API Key
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      value={supabaseKeyInput}
+                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1.5">
+                    {localStorage.getItem('ethiolearn_supabase_url') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickChime();
+                          localStorage.removeItem('ethiolearn_supabase_url');
+                          localStorage.removeItem('ethiolearn_supabase_key');
+                          setSupabaseUrlInput('');
+                          setSupabaseKeyInput('');
+                          setIsSupaConfigured(false);
+                          setShowSupaConfig(false);
+                          playSuccessChime();
+                        }}
+                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-300 rounded text-[10px] font-bold transition-all"
+                      >
+                        Reset / Disconnect
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveSupaConfig}
+                      className="px-3 py-1 bg-[#C8962E] hover:bg-[#b08123] text-black rounded text-[10px] font-black transition-all cursor-pointer"
+                    >
+                      Save & Connect DB
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {isPopupBlocked && (
+              <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-xl space-y-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-base">⚠️</span>
+                  <div>
+                    <p className="font-extrabold text-amber-300 uppercase tracking-wider text-[11.5px]">Popup Window Blocked</p>
+                    <p className="text-zinc-300 mt-1 leading-relaxed text-[11px]">
+                      Since you are running EthioLearn inside the AI Studio Preview panel, your browser's popup blocker has blocked Google Sign-In.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="pl-6 space-y-1.5 text-[10.5px] text-zinc-400">
+                  <p>• <strong className="text-zinc-200">Option A:</strong> Click the <strong className="text-amber-400">"Open in new tab"</strong> icon at the top right of your preview frame to sign in cleanly.</p>
+                  <p>• <strong className="text-zinc-200">Option B:</strong> Try the standard redirect sign-in flow below.</p>
+                </div>
+
+                <div className="pt-1.5 pl-6 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGoogleRedirect}
+                    className="px-3 py-1.5 bg-[#C8962E] hover:bg-[#b08123] text-black font-extrabold rounded-lg text-[10.5px] transition-all cursor-pointer"
+                  >
+                    ⚡ Try Redirect Sign-In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setIsPopupBlocked(false); }}
+                    className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold rounded-lg text-[10.5px] transition-all cursor-pointer"
+                  >
+                    Dismiss
+                  </button>
+                </div>
               </div>
             )}
 
