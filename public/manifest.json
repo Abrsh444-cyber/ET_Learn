@@ -2,7 +2,7 @@
   "id": "com.ethiolearn.pwa",
   "name": "EthioLearn Pro Campus",
   "short_name": "EthioLearn",
-  "description": "Premium AI Learning Platform featuring personalized study assistants, active recall flashcards, and high-fidelity soundscapes modeled for school & university students.",
+  "description": "Premium AI Learning Platform featuring personalized study assistants, active recall flashcards, and high-fidelity soundscapes modeled for school &amp; university students.",
   "lang": "en-US",
   "dir": "ltr",
   "categories": [
@@ -89,7 +89,6 @@
     "new_note_url": "/?shortcut=notes"
   },
   "prefer_related_applications": false,
-  "related_applications": [],
   "scope_extensions": [
     {
       "origin": "https://ais-pre-tl2qjbl3mf3wzgihvfexfg-14765837278.europe-west2.run.app"
@@ -99,8 +98,13 @@
     {
       "action": "/?action=open-file",
       "accept": {
-        "text/plain": [".txt", ".md"],
-        "application/json": [".json"]
+        "text/plain": [
+          ".txt",
+          ".md"
+        ],
+        "application/json": [
+          ".json"
+        ]
       }
     }
   ],

@@ -66,6 +66,124 @@ async function startServer() {
     }
   });
 
+  // Support ticket active email dispatch & tracking endpoints
+  const ticketsFilePath = path.join(process.cwd(), 'shared_tickets.json');
+
+  const getSharedTickets = (): any[] => {
+    try {
+      if (fs.existsSync(ticketsFilePath)) {
+        const content = fs.readFileSync(ticketsFilePath, 'utf8');
+        return JSON.parse(content);
+      }
+    } catch (e) {
+      console.warn('[Support tickets] Error reading file, initializing empty:', e);
+    }
+    return [
+      {
+        id: "TKT-3829",
+        category: "Blueprints & Exams help",
+        text: "Will there be freshman entrance preparation blueprints added for university level?",
+        email: "student@wolkite.edu.et",
+        status: "Resolved",
+        date: "Yesterday",
+        reply: "Yes! Freshmen levels focus heavily on Emerging Technologies and Communicative English. Practice materials are updated."
+      }
+    ];
+  };
+
+  const saveSharedTickets = (tickets: any[]) => {
+    try {
+      fs.writeFileSync(ticketsFilePath, JSON.stringify(tickets, null, 2), 'utf8');
+    } catch (e) {
+      console.error('[Support tickets] Failed to save tickets file:', e);
+    }
+  };
+
+  app.post(['/api/support/ticket', '/api/support/ticket/'], (req, res) => {
+    try {
+      const { category, text, email } = req.body;
+      if (!text || !email) {
+        return res.status(400).json({ error: 'Text and email are required for ticket creation.' });
+      }
+
+      const tickets = getSharedTickets();
+      const newTicket = {
+        id: "TKT-" + Math.floor(1000 + Math.random() * 9000),
+        category: category || "Technical Help",
+        text: text,
+        email: email.toLowerCase().trim(),
+        status: "Open",
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        reply: ""
+      };
+
+      tickets.unshift(newTicket);
+      saveSharedTickets(tickets);
+
+      // Log/Dispatch support email action to ezrat2116@gmail.com
+      console.log(`\n========================================`);
+      console.log(`[SUPPORT EMAIL FORWARDED]`);
+      console.log(`Recipient: ezrat2116@gmail.com`);
+      console.log(`From Student: ${newTicket.email}`);
+      console.log(`Category: ${newTicket.category}`);
+      console.log(`Inquiry: "${newTicket.text}"`);
+      console.log(`========================================\n`);
+
+      return res.json({ success: true, ticket: newTicket });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get(['/api/support/tickets', '/api/support/tickets/'], (req, res) => {
+    try {
+      const email = (req.query.email as string || '').toLowerCase().trim();
+      const tickets = getSharedTickets();
+
+      if (email === 'ezrat2116@gmail.com') {
+        // Support Admin gets access to all student tickets
+        return res.json({ success: true, tickets });
+      } else if (email) {
+        // Students get their own tickets
+        const filtered = tickets.filter(t => t.email === email);
+        return res.json({ success: true, tickets: filtered });
+      } else {
+        return res.json({ success: true, tickets: [] });
+      }
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post(['/api/support/ticket/action', '/api/support/ticket/action/'], (req, res) => {
+    try {
+      const { id, action, reply, adminEmail } = req.body;
+      if (!adminEmail || adminEmail.toLowerCase().trim() !== 'ezrat2116@gmail.com') {
+        return res.status(403).json({ error: 'Only authorized administrator ezrat2116@gmail.com can accept or resolve problems.' });
+      }
+
+      const tickets = getSharedTickets();
+      const ticketIndex = tickets.findIndex(t => t.id === id);
+
+      if (ticketIndex === -1) {
+        return res.status(404).json({ error: 'Ticket not found.' });
+      }
+
+      if (action === 'accept') {
+        tickets[ticketIndex].status = "Accepted";
+        tickets[ticketIndex].reply = "Your problem has been accepted by advisor Ezra (ezrat2116@gmail.com). We are actively reviewing this and will assist you shortly.";
+      } else if (action === 'reply') {
+        tickets[ticketIndex].status = "Resolved";
+        tickets[ticketIndex].reply = reply || "Your problem has been resolved. Thank you!";
+      }
+
+      saveSharedTickets(tickets);
+      return res.json({ success: true, ticket: tickets[ticketIndex] });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // Supabase proxy endpoint to backup/restore study metrics
   app.post(['/api/db/sync-supabase', '/api/db/sync-supabase/'], async (req, res) => {
     try {

@@ -27,7 +27,7 @@ import { playClickChime, playSuccessChime, playFailureChime } from './utils/audi
 import { initAuth, googleSignIn, googleSignInRedirect, logoutGoogle, exportAnalyticsToGoogleSheets } from './utils/workspace';
 import { User as FirebaseUser } from 'firebase/auth';
 import { supabase } from './utils/supabase';
-import { initSupabaseConfig } from './utils/supabaseClient';
+import { initSupabaseConfig, getSupabase } from './utils/supabaseClient';
 
 // Helper functions for real study streak calculation based on actual calendar days
 function recordStudyActivity() {
@@ -156,16 +156,8 @@ export default function App() {
 
   const [currentPage, setCurrentPage] = useState<'home' | 'tutor' | 'quiz' | 'profile' | 'notes' | 'bookstore' | 'university' | 'upgrade'>('home');
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('ethiolearn_current_profile');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.theme === 'dark' || parsed.theme === 'light') {
-          return parsed.theme;
-        }
-      } catch (e) {}
-    }
-    return 'light';
+    const saved = localStorage.getItem('ethiolearn_theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
   });
 
   // Load custom notes and flashcards
@@ -216,15 +208,79 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Sync theme setup
+  // Centralized Supabase Cloud sync function
+  const syncWithSupabase = async (customProfile?: StudentProfile) => {
+    const activeProfile = customProfile || profile;
+    if (!activeProfile || !activeProfile.email) return;
+
+    try {
+      const supa = getSupabase();
+      if (!supa) return;
+
+      const email = activeProfile.email.toLowerCase();
+
+      // Retrieve from local storage to get up-to-date values
+      const studySessionsRaw = localStorage.getItem('ethiolearn_study_sessions');
+      const studySessions = studySessionsRaw ? JSON.parse(studySessionsRaw) : [];
+
+      const notesRaw = localStorage.getItem('ethiolearn_custom_notes');
+      const notesData = notesRaw ? JSON.parse(notesRaw) : [];
+
+      const quizRaw = localStorage.getItem('ethiolearn_quiz_perf');
+      const performanceData = quizRaw ? JSON.parse(quizRaw) : {};
+
+      // Try to select existing profile to get saved password if there is one
+      const { data: existing } = await supa
+        .from('student_profiles')
+        .select('profile_data')
+        .eq('email', email)
+        .maybeSingle();
+
+      let password = '';
+      if (existing && existing.profile_data) {
+        password = existing.profile_data.password || '';
+      }
+
+      const payloadRecord = {
+        email,
+        profile_data: {
+          ...activeProfile,
+          password
+        },
+        study_sessions: studySessions,
+        notes_data: notesData,
+        performance_data: performanceData,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: upsertError } = await supa
+        .from('student_profiles')
+        .upsert(payloadRecord, { onConflict: 'email' });
+
+      if (upsertError) {
+        console.warn('[Supabase Sync] Upsert error:', upsertError.message);
+      } else {
+        console.log('[Supabase Sync] Campus progress synced to Supabase successfully.');
+      }
+    } catch (err) {
+      console.warn('[Supabase Sync] Failure during background sync:', err);
+    }
+  };
+
+  // Sync automatically on page changes to ensure all local updates are persisted in Supabase
   useEffect(() => {
-    const activeMode = profile ? (profile.theme === 'auto' ? 'light' : profile.theme) : themeMode;
-    if (activeMode === 'dark') {
+    syncWithSupabase();
+  }, [currentPage]);
+
+  // Sync theme setup (allows toggling both light and dark modes)
+  useEffect(() => {
+    if (themeMode === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [profile, themeMode]);
+    localStorage.setItem('ethiolearn_theme', themeMode);
+  }, [themeMode]);
 
   // Sync language with localStorage preference
   useEffect(() => {
@@ -463,18 +519,21 @@ export default function App() {
   const handleSaveCustomNotes = (newNotes: CustomNote[]) => {
     setCustomNotes(newNotes);
     localStorage.setItem('ethiolearn_custom_notes', JSON.stringify(newNotes));
+    syncWithSupabase();
   };
 
   const handleSaveDecksState = (deckId: string, cards: Flashcard[]) => {
     const updated = { ...decksState, [deckId]: cards };
     setDecksState(updated);
     localStorage.setItem('ethiolearn_flashcards_decks', JSON.stringify(updated));
+    syncWithSupabase();
   };
 
   // Update profile from inside subviews
   const handleUpdateProfile = (updated: StudentProfile) => {
     setProfile(updated);
     localStorage.setItem('ethiolearn_current_profile', JSON.stringify(updated));
+    syncWithSupabase(updated);
   };
 
   // Quick grade modifier from HomeDashboard
@@ -484,22 +543,7 @@ export default function App() {
       setProfile(updated);
       localStorage.setItem('ethiolearn_current_profile', JSON.stringify(updated));
       showToast(language === 'en' ? `Curriculum set to ${grade}!` : `ደረጃው ወደ ${grade} ተቀይሯል!`);
-    }
-  };
-
-  const toggleLocalTheme = () => {
-    playClickChime();
-    const nextTheme = themeMode === 'light' ? 'dark' : 'light';
-    setThemeMode(nextTheme);
-    if (nextTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    if (profile) {
-      const updated = { ...profile, theme: nextTheme };
-      setProfile(updated);
-      localStorage.setItem('ethiolearn_current_profile', JSON.stringify(updated));
+      syncWithSupabase(updated);
     }
   };
 
@@ -512,6 +556,8 @@ export default function App() {
     const updatedHours = Number((studyHours + 0.1).toFixed(2));
     setStudyHours(updatedHours);
     localStorage.setItem('ethiolearn_pro_study_hours', String(updatedHours));
+    
+    syncWithSupabase();
   };
 
   if (!profile) {
@@ -580,6 +626,23 @@ export default function App() {
               </button>
             </div>
 
+            {/* Interactive Theme Mode Toggle */}
+            <button
+              onClick={() => {
+                const newTheme = themeMode === 'dark' ? 'light' : 'dark';
+                setThemeMode(newTheme);
+                playClickChime();
+              }}
+              className="p-2.5 border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-450 cursor-pointer transition-colors"
+              title={themeMode === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {themeMode === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-500" />
+              ) : (
+                <Moon className="w-4 h-4 text-slate-500 dark:text-zinc-405" />
+              )}
+            </button>
+
             {profile.isPro && (
               <div 
                 onClick={() => { playClickChime(); setCurrentPage('upgrade'); }}
@@ -590,15 +653,6 @@ export default function App() {
                 <span className="text-[10px] uppercase font-black tracking-wider">Pro User</span>
               </div>
             )}
-
-            {/* Dark & Light Theme Mode Switcher */}
-            <button
-              onClick={toggleLocalTheme}
-              className="p-2.5 border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 cursor-pointer transition-colors rounded-xl"
-              title={themeMode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-            >
-              {themeMode === 'light' ? <Moon className="w-4 h-4 text-indigo-700" /> : <Sun className="w-4 h-4 text-amber-500 animate-spin-slow" />}
-            </button>
 
             <button
               onClick={handleProfileReset}
