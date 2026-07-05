@@ -718,10 +718,10 @@ Always end your explanations with 2 conversational, helpful revision questions f
       )}
 
       {/* Chat messages layout viewport (clean white layout) */}
-      <div className="flex-1 bg-white p-4 rounded-xl border border-slate-200 shadow-inner overflow-y-auto mb-4 relative min-h-0 min-h-[300px]">
+      <div className="flex-1 bg-white dark:bg-zinc-950 p-4 rounded-xl border border-slate-200 dark:border-zinc-800/80 shadow-inner overflow-y-auto mb-4 relative min-h-0 min-h-[300px]">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
-            <MessageSquare className="w-12 h-12 mb-3 text-emerald-100 shrink-0" />
+            <MessageSquare className="w-12 h-12 mb-3 text-emerald-100/50 dark:text-emerald-900/20 shrink-0" />
             <p className="font-serif italic text-base">
               {language === 'en' ? 'Type your study query to begin...' : 'ለመጀመር የጥናት ጥያቄዎን ይጻፉ...'}
             </p>
@@ -738,8 +738,8 @@ Always end your explanations with 2 conversational, helpful revision questions f
                 {/* Bubble icon */}
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border text-[13px] font-bold shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    : 'bg-amber-50 border-amber-100 text-[#C8962E]'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/55 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-[#C8962E]'
                 }`}>
                   {msg.role === 'user' ? 'U' : 'AI'}
                 </div>
@@ -749,7 +749,7 @@ Always end your explanations with 2 conversational, helpful revision questions f
                   <div className={`rounded-2xl p-4 text-sm leading-relaxed shadow-sm ${
                     msg.role === 'user'
                       ? 'bg-[#078930] text-white rounded-tr-none'
-                      : 'bg-slate-50 text-slate-800 border border-slate-200 rounded-tl-none font-sans'
+                      : 'bg-slate-50 dark:bg-zinc-900 text-slate-800 dark:text-zinc-150 border border-slate-200 dark:border-zinc-800/60 rounded-tl-none font-sans'
                   }`}>
                     {msg.attachment && (
                       <div className="mb-2.5">
@@ -757,10 +757,10 @@ Always end your explanations with 2 conversational, helpful revision questions f
                           <img 
                             src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`}
                             alt="Attached Homework" 
-                            className="max-h-56 w-auto rounded-lg border border-slate-200 object-contain max-w-full"
+                            className="max-h-56 w-auto rounded-lg border border-slate-200 dark:border-zinc-800 object-contain max-w-full"
                           />
                         ) : (
-                          <div className="flex items-center gap-2 p-2 rounded bg-slate-100 text-xs text-slate-600">
+                          <div className="flex items-center gap-2 p-2 rounded bg-slate-100 dark:bg-zinc-800 text-xs text-slate-600 dark:text-zinc-300">
                             <File className="w-4 h-4 text-[#078930]" />
                             <span className="truncate">{msg.attachment.name}</span>
                           </div>
@@ -773,7 +773,7 @@ Always end your explanations with 2 conversational, helpful revision questions f
                   {msg.role === 'assistant' && msg.content && (
                     <button 
                       onClick={() => copyText(msg.content, index)}
-                      className="text-[10px] text-slate-400 mt-1 self-start flex items-center gap-1 hover:text-emerald-705 p-1 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                      className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1 self-start flex items-center gap-1 hover:text-emerald-700 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       {copiedIndex === index ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedIndex === index ? 'Copied' : 'Copy'}</span>
@@ -785,10 +785,10 @@ Always end your explanations with 2 conversational, helpful revision questions f
 
             {isTyping && (
               <div className="flex gap-3 max-w-[85%] mr-auto items-center">
-                <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0 animate-pulse">
+                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-500 dark:text-zinc-400 text-xs font-bold shrink-0 animate-pulse">
                   AI
                 </div>
-                <div className="bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl rounded-tl-none p-3.5 flex items-center gap-2 shadow-sm">
+                <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800/60 text-slate-500 dark:text-zinc-400 rounded-2xl rounded-tl-none p-3.5 flex items-center gap-2 shadow-sm">
                   {/* Simple Thinking Spinner - requirement */}
                   <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin shrink-0" />
                   <span className="text-xs font-sans">
@@ -816,7 +816,7 @@ Always end your explanations with 2 conversational, helpful revision questions f
               <button
                 key={idx}
                 onClick={() => { playClickChime(); handleSend(chip.value); }}
-                className="text-xs bg-white text-slate-700 hover:text-[#078930] hover:bg-emerald-50 border border-slate-200 hover:border-emerald-250 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 font-medium min-h-[38px]"
+                className="text-xs bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-200 hover:text-[#078930] hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border border-slate-200 dark:border-zinc-850 px-3.5 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 font-medium min-h-[38px]"
               >
                 {chip.label}
               </button>
@@ -826,9 +826,9 @@ Always end your explanations with 2 conversational, helpful revision questions f
 
         {/* Input area attachments preview */}
         {attachedFile && (
-          <div className="flex items-center gap-2.5 bg-white border border-slate-200 p-2.5 rounded-xl self-start text-xs shadow-sm max-w-sm animate-fade-in">
+          <div className="flex items-center gap-2.5 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-2.5 rounded-xl self-start text-xs shadow-sm max-w-sm animate-fade-in">
             {attachedFile.previewUrl ? (
-              <img src={attachedFile.previewUrl} alt="Upload preview" className="w-9 h-9 rounded object-cover border border-slate-200" />
+              <img src={attachedFile.previewUrl} alt="Upload preview" className="w-9 h-9 rounded object-cover border border-slate-200 dark:border-zinc-800" />
             ) : (
               <File className="w-5 h-5 text-emerald-600" />
             )}
@@ -837,7 +837,7 @@ Always end your explanations with 2 conversational, helpful revision questions f
             </div>
             <button
               onClick={() => { setAttachedFile(null); playClickChime(); }}
-              className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded text-slate-400 hover:text-slate-600 dark:hover:text-zinc-205 transition-colors cursor-pointer"
+              className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded text-slate-400 hover:text-slate-600 dark:hover:text-zinc-300 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>

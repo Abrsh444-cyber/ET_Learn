@@ -21,6 +21,17 @@ import BookStoreView from './components/BookStoreView';
 import UniversityExamsView from './components/UniversityExamsView';
 import UpgradeProView from './components/UpgradeProView';
 import EthioLearnLogo from './components/EthioLearnLogo';
+import SupportChatBubble from './components/SupportChatBubble';
+import ExamNotesHubView from './components/ExamNotesHubView';
+
+import { 
+  testFirestoreConnection, 
+  syncProfileToFirestore, 
+  fetchProfileFromFirestore, 
+  saveNoteToFirestore, 
+  deleteNoteFromFirestore, 
+  fetchNotesFromFirestore 
+} from './utils/firebaseStore';
 
 import { getEthiopianDate } from './utils/ethiopianCalendar';
 import { playClickChime, playSuccessChime, playFailureChime } from './utils/audio';
@@ -111,7 +122,7 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && Array.isArray(parsed.subjects)) {
-          const all16 = [
+          const all22 = [
             "Emerging Technologies",
             "Introduction to Economics",
             "General Biology",
@@ -127,10 +138,16 @@ export default function App() {
             "General Physics",
             "Entrepreneurship",
             "Social Anthropology",
-            "C++ Programming"
+            "C++ Programming",
+            "Civics",
+            "Agriculture",
+            "Business",
+            "Moral and Civics",
+            "Emerging Tech",
+            "Applied Math"
           ];
           let updated = false;
-          all16.forEach(s => {
+          all22.forEach(s => {
             if (!parsed.subjects.includes(s)) {
               parsed.subjects.push(s);
               updated = true;
@@ -154,7 +171,7 @@ export default function App() {
     return (saved === 'am' || saved === 'en') ? saved : 'en';
   });
 
-  const [currentPage, setCurrentPage] = useState<'home' | 'tutor' | 'quiz' | 'profile' | 'notes' | 'bookstore' | 'university' | 'upgrade'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'tutor' | 'quiz' | 'profile' | 'notes' | 'bookstore' | 'university' | 'upgrade' | 'examprep'>('home');
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('ethiolearn_theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
@@ -356,6 +373,50 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Firestore connection liveness test
+  useEffect(() => {
+    testFirestoreConnection();
+  }, []);
+
+  // Bidirectional Firestore cloud sync
+  useEffect(() => {
+    if (googleUser) {
+      const syncCloudState = async () => {
+        try {
+          console.log('[Firestore Sync] Initiating bidirection cloud desk sync for UID:', googleUser.uid);
+          
+          // 1. Sync student profile
+          const cloudProfile = await fetchProfileFromFirestore(googleUser.uid);
+          if (cloudProfile) {
+            console.log('[Firestore Sync] Cloud profile pulled. Applying to local study desk.');
+            setProfile(cloudProfile);
+            localStorage.setItem('ethiolearn_current_profile', JSON.stringify(cloudProfile));
+          } else if (profile) {
+            console.log('[Firestore Sync] Creating cloud profile backup.');
+            await syncProfileToFirestore(googleUser.uid, profile);
+          }
+
+          // 2. Sync custom notes
+          const cloudNotes = await fetchNotesFromFirestore(googleUser.uid);
+          if (cloudNotes && cloudNotes.length > 0) {
+            console.log('[Firestore Sync] Cloud notes pulled. Updating local portfolio.');
+            setCustomNotes(cloudNotes);
+            localStorage.setItem('ethiolearn_custom_notes', JSON.stringify(cloudNotes));
+          } else if (customNotes.length > 0) {
+            console.log('[Firestore Sync] Archiving existing local notes onto cloud database.');
+            for (const note of customNotes) {
+              await saveNoteToFirestore(googleUser.uid, note);
+            }
+          }
+        } catch (err) {
+          console.error('[Firestore Sync Failure]:', err);
+        }
+      };
+
+      syncCloudState();
+    }
+  }, [googleUser]);
+
   // Load server-side configured Supabase secrets automatically at startup
   useEffect(() => {
     initSupabaseConfig();
@@ -520,6 +581,31 @@ export default function App() {
     setCustomNotes(newNotes);
     localStorage.setItem('ethiolearn_custom_notes', JSON.stringify(newNotes));
     syncWithSupabase();
+
+    // Sync individual notes to Firestore if Google User is authenticated
+    if (googleUser) {
+      newNotes.forEach(async (note) => {
+        try {
+          await saveNoteToFirestore(googleUser.uid, note);
+        } catch (e) {
+          console.error('[Firestore Note Sync Failure]:', e);
+        }
+      });
+
+      // Prune/delete any deleted note from the cloud
+      fetchNotesFromFirestore(googleUser.uid).then((cloudNotes) => {
+        const localIds = new Set(newNotes.map(n => n.id));
+        cloudNotes.forEach(async (cn) => {
+          if (!localIds.has(cn.id)) {
+            try {
+              await deleteNoteFromFirestore(googleUser.uid, cn.id);
+            } catch (e) {
+              console.error('[Firestore Note Delete Failure]:', e);
+            }
+          }
+        });
+      }).catch(err => console.error('[Firestore Prune Query Failure]:', err));
+    }
   };
 
   const handleSaveDecksState = (deckId: string, cards: Flashcard[]) => {
@@ -534,6 +620,12 @@ export default function App() {
     setProfile(updated);
     localStorage.setItem('ethiolearn_current_profile', JSON.stringify(updated));
     syncWithSupabase(updated);
+
+    if (googleUser) {
+      syncProfileToFirestore(googleUser.uid, updated).catch(err => 
+        console.error('[Firestore Profile Sync Failure]:', err)
+      );
+    }
   };
 
   // Quick grade modifier from HomeDashboard
@@ -544,6 +636,12 @@ export default function App() {
       localStorage.setItem('ethiolearn_current_profile', JSON.stringify(updated));
       showToast(language === 'en' ? `Curriculum set to ${grade}!` : `ደረጃው ወደ ${grade} ተቀይሯል!`);
       syncWithSupabase(updated);
+
+      if (googleUser) {
+        syncProfileToFirestore(googleUser.uid, updated).catch(err => 
+          console.error('[Firestore Grade Sync Failure]:', err)
+        );
+      }
     }
   };
 
@@ -767,12 +865,19 @@ export default function App() {
                 onClose={() => setCurrentPage('home')}
               />
             )}
+
+            {currentPage === 'examprep' && (
+              <ExamNotesHubView 
+                language={language}
+                onClose={() => setCurrentPage('home')}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
 
       {/* PERSISTENT BOTTOM NAVIGATION TAB BAR (Requirement) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 border-t border-slate-200 shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0c0d12]/95 border-t border-slate-200 dark:border-zinc-800/80 shadow-lg">
         {/* Shifting active color bar indicator */}
         <div className="grid grid-cols-6 max-w-2xl mx-auto h-[3px]">
           <div className={currentPage === 'home' ? "bg-[#078930]" : "bg-transparent"} />
@@ -789,7 +894,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('home'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'home' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'home' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
           >
             <HomeIcon className="w-5 h-5 shrink-0" />
@@ -802,7 +907,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('tutor'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'tutor' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'tutor' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
           >
             <Bot className="w-5 h-5 shrink-0" />
@@ -815,7 +920,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('quiz'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'quiz' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'quiz' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
           >
             <Trophy className="w-5 h-5 shrink-0" />
@@ -828,7 +933,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('bookstore'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'bookstore' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'bookstore' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
             title="Book Store MoDules"
           >
@@ -842,7 +947,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('university'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'university' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'university' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
             title="University Exams"
           >
@@ -856,7 +961,7 @@ export default function App() {
           <button
             onClick={() => { playClickChime(); setCurrentPage('profile'); }}
             className={`flex flex-col items-center justify-center w-full transition-all cursor-pointer rounded-xl ${
-              currentPage === 'profile' ? 'text-[#078930] font-extraboldScale' : 'text-slate-400 hover:text-slate-600'
+              currentPage === 'profile' ? 'text-[#078930] dark:text-emerald-400 font-extrabold scale-105' : 'text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300'
             }`}
           >
             <UserIcon className="w-5 h-5 shrink-0" />
@@ -915,6 +1020,9 @@ export default function App() {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* Floating conversational support assistant chat bubble */}
+      <SupportChatBubble language={language} studentName={profile?.name} />
     </div>
   );
 }

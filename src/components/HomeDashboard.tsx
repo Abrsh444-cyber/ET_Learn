@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { 
-  Bot, Award, Calendar, BookOpen, Clock, Play, GraduationCap, ChevronRight, HelpCircle, FileText
+  Bot, Award, Calendar, BookOpen, Clock, Play, GraduationCap, ChevronRight, HelpCircle, FileText, Sparkles
 } from 'lucide-react';
 import { StudentProfile } from '../types';
 import { playClickChime } from '../utils/audio';
@@ -9,7 +9,7 @@ import { playClickChime } from '../utils/audio';
 interface HomeDashboardProps {
   profile: StudentProfile;
   language: 'en' | 'am';
-  onNavigate: (page: 'home' | 'tutor' | 'quiz' | 'profile' | 'notes') => void;
+  onNavigate: (page: 'home' | 'tutor' | 'quiz' | 'profile' | 'notes' | 'examprep') => void;
   onUpdateGrade: (grade: string) => void;
   streakCount: number;
   studyHoursCount: number;
@@ -91,44 +91,63 @@ export default function HomeDashboard({
         </div>
       </div>
 
-      {/* Two Big Action Shortcut Buttons - minimum 48px high, full width on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Three Big Action Shortcut Buttons - minimum 48px high, full width on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <button
           id="btn-shortcut-gpt"
           onClick={() => { playClickChime(); onNavigate('tutor'); }}
-          className="w-full h-16 min-h-[48px] px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-serif font-extrabold text-lg tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer active:scale-98"
+          className="w-full h-16 min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-serif font-extrabold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer active:scale-98"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
-              <Bot className="w-6 h-6 animate-pulse" />
+              <Bot className="w-5.5 h-5.5 animate-pulse" />
             </div>
             <div className="text-left leading-tight">
-              <span className="block text-base font-bold">{language === 'en' ? 'Chat with AI Tutor' : 'ከአይ መምህር ጋር አውራ'}</span>
-              <span className="block text-xs text-emerald-100 font-sans font-normal opacity-85">
-                {language === 'en' ? 'Get immediate answers to queries' : 'ለጥያቄዎችዎ ቅጽበታዊ መልስ ያግኙ'}
+              <span className="block text-sm font-bold">{language === 'en' ? 'Chat with AI Tutor' : 'ከአይ መምህር ጋር አውራ'}</span>
+              <span className="block text-[10px] text-emerald-100 font-sans font-normal opacity-85">
+                {language === 'en' ? 'Get immediate study answers' : 'ለጥያቄዎችዎ ቅጽበታዊ መልስ'}
               </span>
             </div>
           </div>
-          <ChevronRight className="w-6 h-6 transform group-hover:translate-x-1 transition-transform" />
+          <ChevronRight className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" />
+        </button>
+
+        <button
+          id="btn-shortcut-examprep"
+          onClick={() => { playClickChime(); onNavigate('examprep'); }}
+          className="w-full h-16 min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-indigo-600 to-[#078930] hover:from-indigo-700 hover:to-emerald-750 text-white font-serif font-extrabold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer active:scale-98"
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-white shrink-0">
+              <Sparkles className="w-5.5 h-5.5 text-amber-300" />
+            </div>
+            <div className="text-left leading-tight">
+              <span className="block text-sm font-bold">{language === 'en' ? 'Exam Prep Notes Hub' : 'የፈተና ማጠቃለያ ማዕከል'}</span>
+              <span className="block text-[10px] text-emerald-50 font-sans font-normal opacity-85">
+                {language === 'en' ? 'Interactive guides & test prep' : 'ቅድመ-ፈተና ማጠቃለያ ማስታወሻዎች'}
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 transform group-hover:translate-x-1 transition-transform" />
         </button>
 
         <button
           id="btn-shortcut-quiz"
           onClick={() => { playClickChime(); onNavigate('quiz'); }}
-          className="w-full h-16 min-h-[48px] px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-[#C8962E] hover:from-amber-600 hover:to-[#B28224] text-black font-serif font-extrabold text-lg tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer active:scale-98"
+          className="w-full h-16 min-h-[48px] px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-[#C8962E] hover:from-amber-600 hover:to-[#B28224] text-black font-serif font-extrabold text-sm tracking-wide shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer active:scale-98"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-black/10 flex items-center justify-center text-black shrink-0">
-              <Award className="w-6 h-6" />
+              <Award className="w-5.5 h-5.5" />
             </div>
             <div className="text-left leading-tight">
-              <span className="block text-base font-bold">{language === 'en' ? 'Take a Practice Quiz' : 'የመማሪያ ፈተና ውሰድ'}</span>
-              <span className="block text-xs text-amber-950/85 font-sans font-normal opacity-85">
-                {language === 'en' ? 'Test your knowledge on key topics' : 'እውቀትዎን በፈተናዎች ይለኩ'}
+              <span className="block text-sm font-bold">{language === 'en' ? 'Take a Practice Quiz' : 'የመማሪያ ፈተና ውሰድ'}</span>
+              <span className="block text-[10px] text-amber-950/85 font-sans font-normal opacity-85">
+                {language === 'en' ? 'Test knowledge on key topics' : 'እውቀትዎን በፈተናዎች ይለኩ'}
               </span>
             </div>
           </div>
-          <ChevronRight className="w-6 h-6 text-amber-950 transform group-hover:translate-x-1 transition-transform" />
+          <ChevronRight className="w-5 h-5 text-amber-950 transform group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
 

@@ -184,6 +184,61 @@ async function startServer() {
     }
   });
 
+  // Support chat with Ezra persona using Google Gemini 3.5-flash
+  app.post(['/api/support/chat', '/api/support/chat/'], async (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Messages array is required for support assistant.' });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY || cachedMasterApiKey;
+      if (!apiKey || apiKey === 'no-key' || apiKey === 'no-api-key') {
+        return res.status(401).json({ 
+          error: 'Missing Gemini API Key for support assistant. Set GEMINI_API_KEY on the server.' 
+        });
+      }
+
+      // Initialize Google Gen AI client using @google/genai
+      const ai = new GoogleGenAI({
+        apiKey: apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Prepare system instruction for Ezra persona
+      const systemInstruction = `You are Ezra, the creator, lead developer, and academic advisor of EthioLearn (ezrat2116@gmail.com). You are a friendly, encouraging, and brilliant Ethiopian tech student and educator who built this platform to help Ethiopian high school and university students excel in their studies.
+Your tone is warm, personal, professional, and deeply supportive of students' academic journeys. Feel free to use phrases like 'my friend', 'እሺ' (Ishi), or brief Amharic greetings naturally when appropriate to make Ethiopian students feel at home, but respond primarily in the language the student asks in (English, Amharic, or a mix of both).
+Explain with enthusiasm when they ask about features like flashcards, customizable soundscapes, exam prep, or study notes. Keep your answers concise, practical, and highly empathetic. If they encounter technical bugs or need direct support, remind them that they can also submit a formal support ticket to you (ezrat2116@gmail.com) from their Profile tab. Always talk in the first person ('I', 'me', 'my platform') as Ezra himself.`;
+
+      // Convert messages format to Gemini contents schema
+      const geminiContents = messages.map((m: any) => {
+        return {
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content || '' }]
+        };
+      });
+
+      // Generate response using basic text task model: gemini-3.5-flash
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: geminiContents,
+        config: {
+          systemInstruction: systemInstruction,
+        },
+      });
+
+      const replyText = response.text || "I'm sorry, I encountered a brief issue processing that. Ask me again, my friend!";
+      return res.json({ success: true, reply: replyText });
+    } catch (e: any) {
+      console.error('[Support Assistant Chat Error]:', e);
+      return res.status(500).json({ error: e.message || 'Failed to generate support reply' });
+    }
+  });
+
   // Supabase proxy endpoint to backup/restore study metrics
   app.post(['/api/db/sync-supabase', '/api/db/sync-supabase/'], async (req, res) => {
     try {

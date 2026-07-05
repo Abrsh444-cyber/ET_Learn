@@ -57,7 +57,13 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     "General Physics",
     "Entrepreneurship",
     "Social Anthropology",
-    "C++ Programming"
+    "C++ Programming",
+    "Civics",
+    "Agriculture",
+    "Business",
+    "Moral and Civics",
+    "Emerging Tech",
+    "Applied Math"
   ]);
   const [claudeApiKey, setClaudeApiKey] = useState('');
   
@@ -115,7 +121,13 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     "General Physics",
     "Entrepreneurship",
     "Social Anthropology",
-    "C++ Programming"
+    "C++ Programming",
+    "Civics",
+    "Agriculture",
+    "Business",
+    "Moral and Civics",
+    "Emerging Tech",
+    "Applied Math"
   ];
 
   // Fetch accounts on load
@@ -500,165 +512,6 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
 
     setLoading(true);
 
-    const supa = getSupabase();
-    if (supa) {
-      try {
-        let isAuthSuccess = false;
-        
-        // 1. Try to authenticate securely via Supabase Auth
-        try {
-          const { data: authData, error: authError } = await supa.auth.signInWithPassword({
-            email: emailTrim,
-            password: passwordTrim
-          });
-
-          if (!authError && authData?.user) {
-            isAuthSuccess = true;
-            console.log('[Supabase Auth] Login successful:', authData.user.email);
-          } else {
-            console.warn('[Supabase Auth] Standard sign in returned warning:', authError?.message);
-          }
-        } catch (authException) {
-          console.warn('[Supabase Auth] Handled connection exception:', authException);
-        }
-
-        // 2. Fetch or create custom table profile in 'student_profiles'
-        const { data, error } = await supa
-          .from('student_profiles')
-          .select('*')
-          .eq('email', emailTrim.toLowerCase())
-          .maybeSingle();
-
-        if (error) {
-          setAuthError(`Supabase DB Connection Error: ${error.message}`);
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        if (!data) {
-          // If native auth worked but there is no custom row yet, auto-create it now
-          if (isAuthSuccess) {
-            const potentialProfile: StudentProfile = {
-              name: emailTrim.split('@')[0],
-              email: emailTrim,
-              university: "Wolkite University",
-              year: "Grade 12",
-              subjects: selectedSubjects,
-              claudeApiKey: '',
-              dailyGoalHours: 2,
-              theme: 'dark',
-              language: 'both',
-              avatar: 'star',
-              isRegistered: true,
-              unregisteredAICredits: 5
-            };
-
-            const payloadRecord = {
-              email: emailTrim.toLowerCase(),
-              profile_data: {
-                ...potentialProfile,
-                password: passwordTrim
-              },
-              study_sessions: [],
-              notes_data: [],
-              performance_data: {},
-              updated_at: new Date().toISOString()
-            };
-
-            await supa.from('student_profiles').insert(payloadRecord);
-            
-            // Set session locally
-            localStorage.setItem('ethiolearn_active_email', emailTrim);
-            playSuccessChime();
-            setLoading(false);
-            onComplete({ ...potentialProfile, isRegistered: true });
-            return;
-          }
-
-          setAuthError("No academic account found with this email in the cloud database.");
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // Verify password stored in profile_data if native auth was not used/successful
-        const savedProfileData = data.profile_data || {};
-        const savedPassword = savedProfileData.password;
-
-        if (!isAuthSuccess && (!savedPassword || savedPassword !== passwordTrim)) {
-          setAuthError("Incorrect password for this academic cloud database account.");
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // Successfully signed in!
-        const profile: StudentProfile = {
-          name: savedProfileData.name || emailTrim.split('@')[0],
-          email: emailTrim,
-          university: savedProfileData.university || "Wolkite University",
-          year: savedProfileData.year || "Grade 12",
-          subjects: savedProfileData.subjects || selectedSubjects,
-          claudeApiKey: savedProfileData.claudeApiKey || '',
-          dailyGoalHours: savedProfileData.dailyGoalHours || 2,
-          theme: savedProfileData.theme || 'dark',
-          language: savedProfileData.language || 'both',
-          avatar: savedProfileData.avatar || 'star',
-          isRegistered: true,
-          unregisteredAICredits: savedProfileData.unregisteredAICredits || 5
-        };
-
-        // Cache remote database tables into offline local storage
-        if (data.study_sessions) {
-          localStorage.setItem('ethiolearn_study_sessions', JSON.stringify(data.study_sessions));
-        }
-        if (data.notes_data) {
-          localStorage.setItem('ethiolearn_notes', JSON.stringify(data.notes_data));
-        }
-        if (data.performance_data) {
-          localStorage.setItem('ethiolearn_quiz_perf', JSON.stringify(data.performance_data));
-        }
-
-        // Ensure it's stored locally for fast offline retrieval/fallback
-        const foundLocal = registeredAccounts.find(acc => acc.email.toLowerCase() === emailTrim);
-        if (!foundLocal) {
-          const newAccount: AccountInfo = {
-            email: emailTrim,
-            passwordEncrypted: passwordTrim,
-            rememberMe: rememberMe,
-            profile
-          };
-          const updated = [...registeredAccounts, newAccount];
-          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
-          setRegisteredAccounts(updated);
-        }
-
-        localStorage.setItem('ethiolearn_active_email', emailTrim);
-
-        if (rememberMe) {
-          localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
-            email: emailTrim,
-            password: passwordTrim,
-            rememberMe: true
-          }));
-        } else {
-          localStorage.removeItem('ethiolearn_remember_login');
-        }
-
-        playSuccessChime();
-        setLoading(false);
-        onComplete({ ...profile, isRegistered: true });
-        return;
-      } catch (err: any) {
-        console.error('Supabase DB Sign-In failed:', err);
-        setAuthError(`Supabase database connection failed: ${err.message || err}`);
-        playFailureChime();
-        setLoading(false);
-        return;
-      }
-    }
-
     // Lookup credentials locally
     const found = registeredAccounts.find(
       acc => acc.email.toLowerCase() === emailTrim && acc.passwordEncrypted === passwordTrim
@@ -750,133 +603,6 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     }
 
     setLoading(true);
-
-    const supa = getSupabase();
-    if (supa) {
-      try {
-        // 1. Register with native Supabase Auth
-        const { data: signUpData, error: signUpError } = await supa.auth.signUp({
-          email: emailTrim,
-          password: passwordTrim,
-          options: {
-            data: {
-              name: nameTrim,
-              university: university.trim() || "Wolkite University",
-              year: year
-            }
-          }
-        });
-
-        if (signUpError) {
-          console.warn('[Supabase Auth] Sign up error:', signUpError.message);
-          if (signUpError.message.includes('already registered') || signUpError.status === 422) {
-            setAuthError("An account with this email already exists in Supabase Auth.");
-          } else {
-            setAuthError(`Supabase Registration Error: ${signUpError.message}`);
-          }
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        if (!signUpData || !signUpData.user) {
-          setAuthError("Supabase Auth failed to return user information.");
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // 2. Check if email confirmation is required and no session exists yet
-        if (!signUpData.session) {
-          setInfoMessage('Check your email to confirm your account before continuing');
-          playSuccessChime();
-          setLoading(false);
-          return;
-        }
-
-        // 3. If a session exists right after signup, insert profile data into student_profiles
-        const profile: StudentProfile = {
-          name: nameTrim,
-          email: emailTrim,
-          university: university.trim() || "Wolkite University",
-          year,
-          subjects: selectedSubjects,
-          claudeApiKey: claudeApiKey.trim(),
-          dailyGoalHours: 2,
-          theme: 'dark',
-          language: 'both',
-          avatar,
-          isRegistered: true,
-          unregisteredAICredits: 5
-        };
-
-        const payloadRecord = {
-          id: signUpData.user.id,
-          email: emailTrim.toLowerCase(),
-          full_name: nameTrim,
-          university: university.trim() || "Wolkite University",
-          academic_standing: year,
-          focus_modules: selectedSubjects,
-          avatar: avatar,
-          profile_data: {
-            ...profile,
-            password: passwordTrim
-          },
-          study_sessions: [],
-          notes_data: [],
-          performance_data: {},
-          updated_at: new Date().toISOString()
-        };
-
-        const { error: insertError } = await supa
-          .from('student_profiles')
-          .insert(payloadRecord);
-
-        if (insertError) {
-          setAuthError(`Supabase DB Registration Error: ${insertError.message}`);
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // 4. Save remembered credentials and session locally
-        const foundLocal = registeredAccounts.find(acc => acc.email.toLowerCase() === emailTrim);
-        if (!foundLocal) {
-          const newAccount: AccountInfo = {
-            email: emailTrim,
-            passwordEncrypted: passwordTrim,
-            rememberMe: rememberMe,
-            profile
-          };
-          const updated = [...registeredAccounts, newAccount];
-          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
-          setRegisteredAccounts(updated);
-        }
-
-        localStorage.setItem('ethiolearn_active_email', emailTrim);
-
-        if (rememberMe) {
-          localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
-            email: emailTrim,
-            password: passwordTrim,
-            rememberMe: true
-          }));
-        } else {
-          localStorage.removeItem('ethiolearn_remember_login');
-        }
-
-        playSuccessChime();
-        setLoading(false);
-        onComplete(profile);
-        return;
-      } catch (err: any) {
-        console.error('Supabase DB Registration failed:', err);
-        setAuthError(`Supabase connection failed: ${err.message || err}`);
-        playFailureChime();
-        setLoading(false);
-        return;
-      }
-    }
 
     // Check pre-existing accounts locally to avoid visual duplicates
     const exists = registeredAccounts.some(acc => acc.email.toLowerCase() === emailTrim);

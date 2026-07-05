@@ -209,6 +209,77 @@ export const TEXTBOOK_CHAPTERS: Record<string, Record<string, ChapterTextContent
         { term: 'Sequence (ቅደም ተከተል)', definition: 'An ordered list of numbers following a clear mathematical rule.', amharic: 'ቅደም ተከተል' }
       ]
     }
+  },
+  'g12_civics': {
+    'Chapter 1: Building a Democratic System': {
+      title: 'Chapter 1: Building a Democratic System',
+      intro: 'This chapter outlines the structures and procedures of democratic federalism in Ethiopia, highlighting constitutional development and democratic principles.',
+      sections: [
+        {
+          title: '1. Defining Democratic Principles',
+          body: 'Democracy requires sovereign power to reside in the citizens, implemented through representative or direct participation. Human and democratic rights must be codified and protected.'
+        },
+        {
+          title: '2. The Ethiopian Federal Model',
+          body: 'Ethiopia employs an ethnic-linguistic federal system aimed at accommodating diversity while fostering national unity. Powers are split between the federal government and regional states.'
+        }
+      ],
+      keyTerms: [
+        { term: 'Democracy (ዲሞክራሲ)', definition: 'A system of government where power is vested in the people.', amharic: 'ዲሞክራሲ' },
+        { term: 'Federalism (ፌዴራሊዝም)', definition: 'A political organization dividing power between local and national governments.', amharic: 'ፌዴራሊዝም' }
+      ]
+    }
+  },
+  'uni_civics': {
+    'Chapter 1: Understanding Civics, Morality, and Ethics': {
+      title: 'Chapter 1: Understanding Civics, Morality, and Ethics',
+      intro: 'An academic exploration of the ethical theories, moral obligations, and constitutional rights that govern relationships between citizens and the state.',
+      sections: [
+        {
+          title: '1. Theories of Morality and Ethics',
+          body: 'Philosophers distinguish between Deontological (duty-based) and Teleological/Utilitarian (consequence-based) moral frameworks. Professional ethics require impartiality and civic virtue.'
+        }
+      ],
+      keyTerms: [
+        { term: 'Ethics (ስነ-ምግባር)', definition: 'Systematic concepts of right and wrong behaviors.', amharic: 'ስነ-ምግባር' }
+      ]
+    }
+  },
+  'uni_emerging_tech': {
+    'Chapter 1: Introduction to Industry 4.0 & Digital Transformation': {
+      title: 'Chapter 1: Introduction to Industry 4.0 & Digital Transformation',
+      intro: 'Explore the fourth industrial revolution (4IR) and how advanced physical-cyber systems are revolutionizing modern industry, agriculture, and communication.',
+      sections: [
+        {
+          title: '1. What is Industry 4.0?',
+          body: 'Industry 4.0 integrates cyber-physical systems, IoT, real-time edge computing, cloud storage, and AI to automate manufacturing and optimize supply chains.'
+        }
+      ],
+      keyTerms: [
+        { term: 'Cyber-Physical Systems', definition: 'Mechanisms controlled or monitored by computer-based algorithms closely integrated with internet layers.' }
+      ]
+    }
+  },
+  'g12_amharic': {
+    'Chapter 1: ስነ-ጽሁፍ እና ባህል (Literature & Culture)': {
+      title: 'Chapter 1: ስነ-ጽሁፍ እና ባህል (Literature & Culture)',
+      intro: 'ይህ ምዕራፍ ስለ አማርኛ ስነ-ጽሁፍ ታሪክ፣ ስለ ተለያዩ የስነ-ጽሁፍ ዘውጎች እና ከማህበረሰባዊ ባህል ጋር ስላላቸው ትስስር ያብራራል።',
+      sections: [
+        {
+          title: '1. የስነ-ጽሁፍ ምንነትና አይነቶች',
+          body: 'ስነ-ጽሁፍ በሰዎች አስተሳሰብ፣ ስሜትና ውበት ላይ ተመስርቶ በቃላት ጥበብ የሚገለጽ ጥበብ ነው። በሁለት ዋና ዋና ክፍሎች ይከፈላል፡ የፈጠራ ስራዎች (ልብ-ወለድ፣ ግጥም፣ ተውኔት) እና ታሪካዊ/አጠቃላይ ስራዎች።'
+        },
+        {
+          title: '2. ባህልና ስነ-ጽሁፍ',
+          body: 'የአንድ ማህበረሰብ ባህል፣ እምነት፣ ወግ እና ስነ-ምግባር በስነ-ጽሁፍ ውስጥ ይንጸባረቃሉ። ለምሳሌ የኢትዮጵያ ባህላዊ እሴቶች በሀገረሰብ ግጥሞች እና ተረቶች ውስጥ በሰፊው ይገኛሉ።'
+        }
+      ],
+      keyTerms: [
+        { term: 'ስነ-ጽሁፍ (Literature)', definition: 'በቃላት ውበትና ጥበብ ላይ ተመስርቶ ስሜትንና ሃሳብን የሚገልጽበት ጥበብ ነው።', amharic: 'ስነ-ጽሁፍ' },
+        { term: 'ዘውግ (Genre)', definition: 'የስነ-ጽሁፍ ስራዎች የሚከፈሉበት ወይም የሚመደቡበት ዘይቤ (ልብ-ወለድ፣ ግጥም፣ ወዘተ)።', amharic: 'ዘውግ' }
+      ],
+      examAlert: 'ለማትሪክ ፈተና፡ የስነ-ጽሁፍ ዘውጎችን መለየት እና ባህላዊ ግጥሞችን መተንተን በፈተና ላይ በብዛት ይጠየቃሉ።'
+    }
   }
 };
 

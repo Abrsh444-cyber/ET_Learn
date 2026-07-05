@@ -84,7 +84,14 @@ export default function StudentProfileView({
     "Aptitude",
     "General Physics",
     "Entrepreneurship",
-    "Social Anthropology"
+    "Social Anthropology",
+    "C++ Programming",
+    "Civics",
+    "Agriculture",
+    "Business",
+    "Moral and Civics",
+    "Emerging Tech",
+    "Applied Math"
   ];
 
   // Load quiz history from local device storage
@@ -265,8 +272,8 @@ export default function StudentProfileView({
       
       playSuccessChime();
       setSaveSuccess(language === 'en' 
-        ? "Your student profile has been securely updated in the database." 
-        : "የመገለጫ መረጃዎ በተሳካ ሁኔታ በዳታቤዝ ውስጥ ተዘምኗል።"
+        ? "Your student profile has been securely updated." 
+        : "የመገለጫ መረጃዎ በተሳካ ሁኔታ ተዘምኗል።"
       );
       setIsEditing(false);
       setTimeout(() => setSaveSuccess(null), 5000);
@@ -737,12 +744,12 @@ export default function StudentProfileView({
             )}
           </div>
 
-          {/* Genuine Database-Backed Statistics Summary (Only utilizing existing available database properties) */}
+          {/* Genuine Academic Statistics Summary */}
           <div className="bg-[#111111]/90 rounded-2xl border border-zinc-900 p-6 space-y-4">
             <div className="flex items-center gap-2 border-b border-zinc-900 pb-3">
-              <Database className="w-4.5 h-4.5 text-[#C8962E]" />
+              <Award className="w-4.5 h-4.5 text-[#C8962E]" />
               <h4 className="font-serif text-sm font-black text-[#F0EDE8] uppercase tracking-wide">
-                {language === 'en' ? "Database Learning Analytics Summary" : "የዳታቤዝ ጥናት መረጃ ማጠቃለያ"}
+                {language === 'en' ? "Academic Learning Analytics Summary" : "የአካዳሚክ ጥናት መረጃ ማጠቃለያ"}
               </h4>
             </div>
 
