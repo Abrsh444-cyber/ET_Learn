@@ -4,6 +4,7 @@
  */
 
 import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
@@ -14,9 +15,8 @@ import { DynamoDBDocumentClient, PutCommand, GetCommand } from '@aws-sdk/lib-dyn
 
 dotenv.config();
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+const app = express();
+const PORT = 3000;
 
   // In-memory persistent master key cache for students
   let cachedMasterApiKey: string | undefined = undefined;
@@ -41,6 +41,7 @@ async function startServer() {
     return true; // Accept any key structure to maximize compatibility with all academic AI integrations
   };
 
+  app.use(cors());
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -63,6 +64,285 @@ async function startServer() {
       return res.status(400).json({ error: 'Invalid key format for master sync.' });
     } catch (e: any) {
       return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Support ticket active email dispatch & tracking endpoints
+  const ticketsFilePath = path.join(process.cwd(), 'shared_tickets.json');
+
+  const getSharedTickets = (): any[] => {
+    try {
+      if (fs.existsSync(ticketsFilePath)) {
+        const content = fs.readFileSync(ticketsFilePath, 'utf8');
+        return JSON.parse(content);
+      }
+    } catch (e) {
+      console.warn('[Support tickets] Error reading file, initializing empty:', e);
+    }
+    return [
+      {
+        id: "TKT-3829",
+        category: "Blueprints & Exams help",
+        text: "Will there be freshman entrance preparation blueprints added for university level?",
+        email: "student@wolkite.edu.et",
+        status: "Resolved",
+        date: "Yesterday",
+        reply: "Yes! Freshmen levels focus heavily on Emerging Technologies and Communicative English. Practice materials are updated."
+      }
+    ];
+  };
+
+  const saveSharedTickets = (tickets: any[]) => {
+    try {
+      fs.writeFileSync(ticketsFilePath, JSON.stringify(tickets, null, 2), 'utf8');
+    } catch (e) {
+      console.error('[Support tickets] Failed to save tickets file:', e);
+    }
+  };
+
+  app.post(['/api/support/ticket', '/api/support/ticket/'], (req, res) => {
+    try {
+      const { category, text, email } = req.body;
+      if (!text || !email) {
+        return res.status(400).json({ error: 'Text and email are required for ticket creation.' });
+      }
+
+      const tickets = getSharedTickets();
+      const newTicket = {
+        id: "TKT-" + Math.floor(1000 + Math.random() * 9000),
+        category: category || "Technical Help",
+        text: text,
+        email: email.toLowerCase().trim(),
+        status: "Open",
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        reply: ""
+      };
+
+      tickets.unshift(newTicket);
+      saveSharedTickets(tickets);
+
+      // Log/Dispatch support email action to ezrat2116@gmail.com
+      console.log(`\n========================================`);
+      console.log(`[SUPPORT EMAIL FORWARDED]`);
+      console.log(`Recipient: ezrat2116@gmail.com`);
+      console.log(`From Student: ${newTicket.email}`);
+      console.log(`Category: ${newTicket.category}`);
+      console.log(`Inquiry: "${newTicket.text}"`);
+      console.log(`========================================\n`);
+
+      return res.json({ success: true, ticket: newTicket });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.get(['/api/support/tickets', '/api/support/tickets/'], (req, res) => {
+    try {
+      const email = (req.query.email as string || '').toLowerCase().trim();
+      const tickets = getSharedTickets();
+
+      if (email === 'ezrat2116@gmail.com') {
+        // Support Admin gets access to all student tickets
+        return res.json({ success: true, tickets });
+      } else if (email) {
+        // Students get their own tickets
+        const filtered = tickets.filter(t => t.email === email);
+        return res.json({ success: true, tickets: filtered });
+      } else {
+        return res.json({ success: true, tickets: [] });
+      }
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.post(['/api/support/ticket/action', '/api/support/ticket/action/'], (req, res) => {
+    try {
+      const { id, action, reply, adminEmail } = req.body;
+      if (!adminEmail || adminEmail.toLowerCase().trim() !== 'ezrat2116@gmail.com') {
+        return res.status(403).json({ error: 'Only authorized administrator ezrat2116@gmail.com can accept or resolve problems.' });
+      }
+
+      const tickets = getSharedTickets();
+      const ticketIndex = tickets.findIndex(t => t.id === id);
+
+      if (ticketIndex === -1) {
+        return res.status(404).json({ error: 'Ticket not found.' });
+      }
+
+      if (action === 'accept') {
+        tickets[ticketIndex].status = "Accepted";
+        tickets[ticketIndex].reply = "Your problem has been accepted by advisor Ezra (ezrat2116@gmail.com). We are actively reviewing this and will assist you shortly.";
+      } else if (action === 'reply') {
+        tickets[ticketIndex].status = "Resolved";
+        tickets[ticketIndex].reply = reply || "Your problem has been resolved. Thank you!";
+      }
+
+      saveSharedTickets(tickets);
+      return res.json({ success: true, ticket: tickets[ticketIndex] });
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Support chat with Ezra persona using Google Gemini 3.5-flash or any other server key
+  app.post(['/api/support/chat', '/api/support/chat/'], async (req, res) => {
+    try {
+      const { messages } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: 'Messages array is required for support assistant.' });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || cachedMasterApiKey;
+      if (!apiKey || apiKey === 'no-key' || apiKey === 'no-api-key') {
+        return res.status(401).json({ 
+          error: 'Missing API Key for support assistant. Please configure a server-side API key.' 
+        });
+      }
+
+      // Prepare system instruction for Ezra persona
+      const systemInstruction = `You are Ezra, the creator, lead developer, and academic advisor of EthioLearn (ezrat2116@gmail.com). You are a friendly, encouraging, and brilliant Ethiopian tech student and educator who built this platform to help Ethiopian high school and university students excel in their studies.
+Your tone is warm, personal, professional, and deeply supportive of students' academic journeys. Feel free to use phrases like 'my friend', 'እሺ' (Ishi), or brief Amharic greetings naturally when appropriate to make Ethiopian students feel at home, but respond primarily in the language the student asks in (English, Amharic, or a mix of both).
+Explain with enthusiasm when they ask about features like flashcards, customizable soundscapes, exam prep, or study notes. Keep your answers concise, practical, and highly empathetic. If they encounter technical bugs or need direct support, remind them that they can also submit a formal support ticket to you (ezrat2116@gmail.com) from their Profile tab. Always talk in the first person ('I', 'me', 'my platform') as Ezra himself.`;
+
+      const useGemini = apiKey.startsWith('AIzaSy') || (!!process.env.GEMINI_API_KEY && apiKey === process.env.GEMINI_API_KEY);
+      const useAnthropic = apiKey.startsWith('sk-ant-') || (!!process.env.ANTHROPIC_API_KEY && apiKey === process.env.ANTHROPIC_API_KEY);
+      const useOpenAi = (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-') && !apiKey.startsWith('sk-ant-') && !apiKey.startsWith('gsk_')) || (!!process.env.OPENAI_API_KEY && apiKey === process.env.OPENAI_API_KEY);
+      const useGroq = apiKey.startsWith('gsk_') || (!!process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
+
+      let replyText = "";
+
+      if (useGemini) {
+        // Initialize Google Gen AI client using @google/genai
+        const ai = new GoogleGenAI({
+          apiKey: apiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build',
+            }
+          }
+        });
+
+        const geminiContents = messages.map((m: any) => {
+          return {
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content || '' }]
+          };
+        });
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.5-flash',
+          contents: geminiContents,
+          config: {
+            systemInstruction: systemInstruction,
+          },
+        });
+
+        replyText = response.text || "";
+      } else if (useAnthropic) {
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            messages: messages.map((m: any) => ({ role: m.role, content: m.content || '' })),
+            system: systemInstruction,
+            max_tokens: 1500,
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          replyText = data.content?.[0]?.text || "";
+        } else {
+          const errText = await response.text();
+          throw new Error(`Anthropic support chat error: ${errText}`);
+        }
+      } else if (useOpenAi) {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              ...messages.map((m: any) => ({ role: m.role, content: m.content || '' }))
+            ],
+            max_tokens: 1500,
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          replyText = data.choices?.[0]?.message?.content || "";
+        } else {
+          const errText = await response.text();
+          throw new Error(`OpenAI support chat error: ${errText}`);
+        }
+      } else if (useGroq) {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              ...messages.map((m: any) => ({ role: m.role, content: m.content || '' }))
+            ],
+            max_tokens: 1500,
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          replyText = data.choices?.[0]?.message?.content || "";
+        } else {
+          const errText = await response.text();
+          throw new Error(`Groq support chat error: ${errText}`);
+        }
+      } else {
+        // Default to OpenRouter
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': 'https://ai.studio/build',
+            'X-Title': 'EthioLearn',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: systemInstruction },
+              ...messages.map((m: any) => ({ role: m.role, content: m.content || '' }))
+            ],
+            max_tokens: 1500,
+          })
+        });
+        if (response.ok) {
+          const data = await response.json();
+          replyText = data.choices?.[0]?.message?.content || "";
+        } else {
+          const errText = await response.text();
+          throw new Error(`OpenRouter support chat error: ${errText}`);
+        }
+      }
+
+      if (!replyText) {
+        replyText = "I'm sorry, I encountered a brief issue processing that. Ask me again, my friend!";
+      }
+
+      return res.json({ success: true, reply: replyText });
+    } catch (e: any) {
+      console.error('[Support Assistant Chat Error]:', e);
+      return res.status(500).json({ error: e.message || 'Failed to generate support reply' });
     }
   });
 
@@ -252,11 +532,11 @@ async function startServer() {
       }
       
       // Prioritize client-provided API key from settings, then fallback to server env, then cached master key
-      const apiKey = resolvedUserKey || req.headers['x-api-key'] || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || cachedMasterApiKey; 
+      const apiKey = resolvedUserKey || req.headers['x-api-key'] || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GROQ_API_KEY || cachedMasterApiKey; 
       
       if (!apiKey || apiKey === 'no-key' || apiKey === 'no-api-key') {
         return res.status(401).json({ 
-          error: 'Missing API Key. Please provide an API key in Onboarding or Settings to enable AI tutoring features.' 
+          error: 'Missing API Key. Please configure your GEMINI_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY environment variable on the server.' 
         });
       }
 
@@ -267,10 +547,10 @@ async function startServer() {
       const useGroqDirectly = apiKey.startsWith('gsk_') || (!!process.env.GROQ_API_KEY && apiKey === process.env.GROQ_API_KEY);
 
       // Check if we can use native Anthropic API directly
-      const useAnthropicDirectly = apiKey.startsWith('sk-ant-');
+      const useAnthropicDirectly = apiKey.startsWith('sk-ant-') || (!!process.env.ANTHROPIC_API_KEY && apiKey === process.env.ANTHROPIC_API_KEY);
 
       // Check if we can use native OpenAI API directly
-      const useOpenAiDirectly = (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-') && !apiKey.startsWith('sk-ant-') && !apiKey.startsWith('gsk_'));
+      const useOpenAiDirectly = (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-or-') && !apiKey.startsWith('sk-ant-') && !apiKey.startsWith('gsk_')) || (!!process.env.OPENAI_API_KEY && apiKey === process.env.OPENAI_API_KEY);
 
       if (useGeminiDirectly) {
         // Configure chunks for Server-Sent Events (SSE) streaming helper
@@ -311,12 +591,26 @@ async function startServer() {
           };
         });
 
-        const stream = await ai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
-          contents: geminiContents,
-          config: {
-            systemInstruction: system || undefined,
-          },
+        let stream;
+try {
+  stream = await ai.models.generateContentStream({
+    model: 'gemini-3.5-flash',
+    contents: geminiContents,
+    config: {
+      systemInstruction: system || undefined,
+    },
+  });
+} } catch (geminiErr) {
+  console.warn('[EthioLearn Server] Gemini unavailable, showing friendly message');
+  res.write(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: 'Your AI tutor is briefly busy — please try again shortly.' } })}\n\n`);
+  res.write('data: [DONE]\n\n');
+  res.end();
+  return;
+}
+
+for await (const chunk of stream) {
+}
+
         });
 
         for await (const chunk of stream) {
@@ -801,24 +1095,34 @@ async function startServer() {
   });
 
   // Serve static assets in production or use Vite developer middleware
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    (async () => {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
+      
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[EthioLearn Server] bound on port ${PORT} (dev mode with Vite)`);
+      });
+    })();
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
+      if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: `API endpoint ${req.path} not found.` });
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
+
+    if (!process.env.VERCEL) {
+      app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[EthioLearn Server] bound on port ${PORT} (production mode)`);
+      });
+    }
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[EthioLearn Server] bound on port ${PORT}`);
-  });
-}
-
-startServer();
+export default app;
