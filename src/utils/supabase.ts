@@ -11,6 +11,4 @@ const isValidUrl = supabaseUrl && supabaseUrl.startsWith('http');
  * If the environment variables are not supplied or are placeholders, we return null
  * to prevent the application from crashing on startup.
  */
-export const supabase = isValidUrl && supabaseAnonKey
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : null;
+export const supabase = null;

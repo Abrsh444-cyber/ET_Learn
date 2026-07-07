@@ -31,7 +31,7 @@ interface AccountInfo {
 
 export default function SplashOnboarding({ onComplete, initialProfile }: SplashOnboardingProps) {
   // Mode switcher: 'splash' | 'signin' | 'signup'
-  const [mode, setMode] = useState<'splash' | 'signin' | 'signup'>('splash');
+  const [mode, setMode] = useState<'splash' | 'signin' | 'signup'>('signin');
   
   // Registration and Authentication inputs
   const [email, setEmail] = useState('');
@@ -57,7 +57,13 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     "General Physics",
     "Entrepreneurship",
     "Social Anthropology",
-    "C++ Programming"
+    "C++ Programming",
+    "Civics",
+    "Agriculture",
+    "Business",
+    "Moral and Civics",
+    "Emerging Tech",
+    "Applied Math"
   ]);
   const [claudeApiKey, setClaudeApiKey] = useState('');
   
@@ -72,6 +78,9 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const [showKey, setShowKey] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isPopupBlocked, setIsPopupBlocked] = useState(false);
 
   // Accounts list from local state
@@ -89,6 +98,12 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
       delay: Math.random() * -20,
     }));
   });
+
+  // Automatically clear errors and info messages on mode changes
+  useEffect(() => {
+    setAuthError(null);
+    setInfoMessage(null);
+  }, [mode]);
   
   const subjectsList = [
     "Emerging Technologies",
@@ -106,7 +121,13 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     "General Physics",
     "Entrepreneurship",
     "Social Anthropology",
-    "C++ Programming"
+    "C++ Programming",
+    "Civics",
+    "Agriculture",
+    "Business",
+    "Moral and Civics",
+    "Emerging Tech",
+    "Applied Math"
   ];
 
   // Fetch accounts on load
@@ -166,65 +187,172 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
         const { user } = res;
         const userEmail = user.email || '';
         const userName = user.displayName || 'Scholar';
+        const emailLower = userEmail.toLowerCase();
         
-        // Check if account already exists
-        const found = registeredAccounts.find(
-          acc => acc.email.toLowerCase() === userEmail.toLowerCase()
-        );
+        let profile: StudentProfile;
         
-        if (found) {
-          // Session exists! Log in instantly
-          localStorage.setItem('ethiolearn_active_email', found.email);
-          playSuccessChime();
-          onComplete({ ...found.profile, isRegistered: true });
+        // Check if connected to Supabase
+        const supa = getSupabase();
+        if (supa) {
+          try {
+            const { data: supaRecord, error: supaError } = await supa
+              .from('student_profiles')
+              .select('*')
+              .eq('email', emailLower)
+              .maybeSingle();
+
+            if (supaRecord && supaRecord.profile_data) {
+              // Found on Supabase! Load and sync
+              const sp = supaRecord.profile_data;
+              profile = {
+                name: sp.name || userName,
+                email: userEmail,
+                university: sp.university || "Addis Ababa University",
+                year: sp.year || "University",
+                subjects: sp.subjects || [],
+                claudeApiKey: sp.claudeApiKey || "",
+                dailyGoalHours: sp.dailyGoalHours || 2,
+                theme: sp.theme || 'dark',
+                language: sp.language || 'both',
+                avatar: sp.avatar || 'champion',
+                isRegistered: true,
+                unregisteredAICredits: sp.unregisteredAICredits || 5
+              };
+              
+              // Push into local study sessions, notes, etc. if provided from cloud
+              if (supaRecord.study_sessions) {
+                localStorage.setItem('ethiolearn_study_sessions', JSON.stringify(supaRecord.study_sessions));
+              }
+              if (supaRecord.notes_data) {
+                localStorage.setItem('ethiolearn_custom_notes', JSON.stringify(supaRecord.notes_data));
+              }
+              if (supaRecord.performance_data) {
+                localStorage.setItem('ethiolearn_quiz_perf', JSON.stringify(supaRecord.performance_data));
+              }
+            } else {
+              // Create brand new profile on both local & Supabase
+              profile = {
+                name: userName,
+                email: userEmail,
+                university: "Addis Ababa University",
+                year: "University",
+                subjects: [
+                  "Emerging Technologies",
+                  "Introduction to Economics",
+                  "General Biology",
+                  "Communicative English",
+                  "Moral and Civic Education",
+                  "Mathematics",
+                  "Inclusive Education",
+                  "Geography",
+                  "Logic and Critical Thinking",
+                  "History",
+                  "Chemistry",
+                  "Aptitude",
+                  "General Physics",
+                  "Entrepreneurship",
+                  "Social Anthropology",
+                  "C++ Programming"
+                ],
+                claudeApiKey: "",
+                dailyGoalHours: 2,
+                theme: 'dark',
+                language: 'both',
+                avatar: 'champion',
+                isRegistered: true,
+                unregisteredAICredits: 5
+              };
+
+              const payloadRecord = {
+                email: emailLower,
+                profile_data: {
+                  ...profile,
+                  password: "google_authenticated"
+                },
+                study_sessions: [],
+                notes_data: [],
+                performance_data: {},
+                updated_at: new Date().toISOString()
+              };
+
+              await supa.from('student_profiles').insert(payloadRecord);
+            }
+          } catch (supaEx) {
+            console.warn('[Supabase Google Sync] Handled error, falling back to local:', supaEx);
+            // Fallback profile if Supabase query failed
+            profile = {
+              name: userName,
+              email: userEmail,
+              university: "Addis Ababa University",
+              year: "University",
+              subjects: [ "Mathematics", "Geography", "History", "Chemistry" ],
+              claudeApiKey: "",
+              dailyGoalHours: 2,
+              theme: 'dark',
+              language: 'both',
+              avatar: 'champion',
+              isRegistered: true,
+              unregisteredAICredits: 5
+            };
+          }
         } else {
-          // New account! Create a profile with smart Google defaults
-          const profile: StudentProfile = {
-            name: userName,
-            email: userEmail,
-            university: "Addis Ababa University",
-            year: "University",
-            subjects: [
-              "Emerging Technologies",
-              "Introduction to Economics",
-              "General Biology",
-              "Communicative English",
-              "Moral and Civic Education",
-              "Mathematics",
-              "Inclusive Education",
-              "Geography",
-              "Logic and Critical Thinking",
-              "History",
-              "Chemistry",
-              "Aptitude",
-              "General Physics",
-              "Entrepreneurship",
-              "Social Anthropology",
-              "C++ Programming"
-            ],
-            claudeApiKey: "",
-            dailyGoalHours: 2,
-            theme: 'dark',
-            language: 'both',
-            avatar: 'champion',
-            isRegistered: true,
-            unregisteredAICredits: 5
-          };
-          
-          const newAccount: AccountInfo = {
-            email: userEmail,
-            passwordEncrypted: "google_authenticated",
-            rememberMe: true,
-            profile
-          };
-          
-          const updated = [...registeredAccounts, newAccount];
-          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
-          localStorage.setItem('ethiolearn_active_email', userEmail);
-          
-          playSuccessChime();
-          onComplete(profile);
+          // If no Supabase connection is established, check if local account exists
+          const found = registeredAccounts.find(
+            acc => acc.email.toLowerCase() === emailLower
+          );
+
+          if (found) {
+            profile = found.profile;
+          } else {
+            profile = {
+              name: userName,
+              email: userEmail,
+              university: "Addis Ababa University",
+              year: "University",
+              subjects: [
+                "Emerging Technologies",
+                "Introduction to Economics",
+                "General Biology",
+                "Communicative English",
+                "Moral and Civic Education",
+                "Mathematics",
+                "Inclusive Education",
+                "Geography",
+                "Logic and Critical Thinking",
+                "History",
+                "Chemistry",
+                "Aptitude",
+                "General Physics",
+                "Entrepreneurship",
+                "Social Anthropology",
+                "C++ Programming"
+              ],
+              claudeApiKey: "",
+              dailyGoalHours: 2,
+              theme: 'dark',
+              language: 'both',
+              avatar: 'champion',
+              isRegistered: true,
+              unregisteredAICredits: 5
+            };
+          }
         }
+
+        // Save session locally as active profile
+        const newAccount: AccountInfo = {
+          email: userEmail,
+          passwordEncrypted: "google_authenticated",
+          rememberMe: true,
+          profile
+        };
+        
+        const filteredAccounts = registeredAccounts.filter(acc => acc.email.toLowerCase() !== emailLower);
+        const updated = [...filteredAccounts, newAccount];
+        localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
+        localStorage.setItem('ethiolearn_active_email', userEmail);
+        
+        playSuccessChime();
+        onComplete(profile);
       }
     } catch (err: any) {
       console.error('Google onboarding auth failed:', err);
@@ -270,93 +398,119 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     }
   };
 
+  const renderSupabaseConfigPanel = () => {
+    return (
+      <div className="border border-zinc-850 bg-[#0a0a0a]/70 backdrop-blur rounded-xl p-3 space-y-3 shadow-md">
+        <button
+          type="button"
+          onClick={() => { playClickChime(); setShowSupaConfig(!showSupaConfig); }}
+          className="w-full flex items-center justify-between text-[11px] text-zinc-400 font-bold tracking-wide uppercase hover:text-zinc-200 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <Database className={`w-3.5 h-3.5 ${isSupaConfigured ? 'text-emerald-500 animate-pulse' : 'text-amber-500'}`} />
+            <span>DB: {isSupaConfigured ? 'Supabase Connected' : 'Local Sandbox (Offline)'}</span>
+          </div>
+          <span className="text-[10px] text-amber-500 hover:underline cursor-pointer">
+            {showSupaConfig ? 'Hide Config' : 'Configure Cloud Sync'}
+          </span>
+        </button>
+
+        {showSupaConfig && (
+          <div className="space-y-3 pt-2.5 border-t border-zinc-900 text-left">
+            <p className="text-[10.5px] text-zinc-400 leading-relaxed">
+              Pair your custom Supabase database to securely sync student profiles, study sessions, custom study notes, and quiz performance history across all your devices.
+            </p>
+            
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                Supabase URL (VITE_SUPABASE_URL)
+              </label>
+              <input
+                type="text"
+                placeholder="https://your-project.supabase.co"
+                value={supabaseUrlInput}
+                onChange={(e) => setSupabaseUrlInput(e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] font-mono text-zinc-200 outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
+                Supabase Anon/Public Key (VITE_SUPABASE_ANON_KEY)
+              </label>
+              <input
+                type="password"
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                value={supabaseKeyInput}
+                onChange={(e) => setSupabaseKeyInput(e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] font-mono text-zinc-200 outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleSaveSupaConfig}
+                className="px-3 py-1.5 bg-[#C8962E] hover:bg-[#b08123] text-black font-extrabold rounded text-[10.5px] transition-colors cursor-pointer"
+              >
+                Save Connection
+              </button>
+              {isSupaConfigured && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    playClickChime();
+                    localStorage.removeItem('ethiolearn_supabase_url');
+                    localStorage.removeItem('ethiolearn_supabase_key');
+                    setSupabaseUrlInput('');
+                    setSupabaseKeyInput('');
+                    setIsSupaConfigured(false);
+                    playSuccessChime();
+                  }}
+                  className="px-3 py-1.5 bg-red-950/30 border border-red-500/30 text-red-400 font-bold rounded text-[10.5px] hover:bg-red-950/50 transition-colors cursor-pointer"
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setEmailError(null);
+    setPasswordError(null);
 
     const emailTrim = email.trim().toLowerCase();
     const passwordTrim = password.trim();
 
-    if (!emailTrim || !passwordTrim) {
-      setAuthError("Please fill out both email and password fields.");
+    let hasValidationError = false;
+    if (!emailTrim) {
+      setEmailError("Email address is required.");
+      hasValidationError = true;
+    } else if (!emailTrim.includes('@')) {
+      setEmailError("Please enter a valid email address.");
+      hasValidationError = true;
+    }
+
+    if (!passwordTrim) {
+      setPasswordError("Password is required.");
+      hasValidationError = true;
+    } else if (passwordTrim.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      hasValidationError = true;
+    }
+
+    if (hasValidationError) {
       playFailureChime();
       return;
     }
 
     setLoading(true);
-
-    const supa = getSupabase();
-    if (supa) {
-      try {
-        const { data, error } = await supa.auth.signInWithPassword({
-          email: emailTrim,
-          password: passwordTrim
-        });
-
-        if (error) {
-          setAuthError(`Supabase Sign-In: ${error.message}`);
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // Successfully signed in with Supabase
-        const user = data.user;
-        const metadata = user?.user_metadata || {};
-        
-        const foundLocal = registeredAccounts.find(acc => acc.email.toLowerCase() === emailTrim);
-        const profile: StudentProfile = foundLocal?.profile || {
-          name: metadata.name || emailTrim.split('@')[0],
-          email: emailTrim,
-          university: metadata.university || "Wolkite University",
-          year: metadata.year || "Grade 12",
-          subjects: metadata.subjects || selectedSubjects,
-          claudeApiKey: '',
-          dailyGoalHours: 2,
-          theme: 'dark',
-          language: 'both',
-          avatar: metadata.avatar || 'star',
-          isRegistered: true,
-          unregisteredAICredits: 5
-        };
-
-        // Ensure it's stored locally for fast offline retrieval/fallback
-        if (!foundLocal) {
-          const newAccount: AccountInfo = {
-            email: emailTrim,
-            passwordEncrypted: passwordTrim,
-            rememberMe: rememberMe,
-            profile
-          };
-          const updated = [...registeredAccounts, newAccount];
-          localStorage.setItem('ethiolearn_accounts', JSON.stringify(updated));
-          setRegisteredAccounts(updated);
-        }
-
-        localStorage.setItem('ethiolearn_active_email', emailTrim);
-
-        if (rememberMe) {
-          localStorage.setItem('ethiolearn_remember_login', JSON.stringify({
-            email: emailTrim,
-            password: passwordTrim,
-            rememberMe: true
-          }));
-        } else {
-          localStorage.removeItem('ethiolearn_remember_login');
-        }
-
-        playSuccessChime();
-        setLoading(false);
-        onComplete({ ...profile, isRegistered: true });
-        return;
-      } catch (err: any) {
-        console.error('Supabase Sign-In failed:', err);
-        setAuthError(`Supabase connection failed: ${err.message || err}`);
-        playFailureChime();
-        setLoading(false);
-        return;
-      }
-    }
 
     // Lookup credentials locally
     const found = registeredAccounts.find(
@@ -424,6 +578,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    setInfoMessage(null);
 
     const nameTrim = name.trim();
     const emailTrim = email.trim().toLowerCase();
@@ -448,40 +603,6 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
     }
 
     setLoading(true);
-
-    const supa = getSupabase();
-    if (supa) {
-      try {
-        const { data, error } = await supa.auth.signUp({
-          email: emailTrim,
-          password: passwordTrim,
-          options: {
-            data: {
-              name: nameTrim,
-              university: university.trim() || "Wolkite University",
-              year,
-              avatar,
-              subjects: selectedSubjects
-            }
-          }
-        });
-
-        if (error) {
-          setAuthError(`Supabase Auth Sign-Up Error: ${error.message}`);
-          playFailureChime();
-          setLoading(false);
-          return;
-        }
-
-        // Successfully registered with Supabase Auth!
-      } catch (err: any) {
-        console.error('Supabase Sign-Up failed:', err);
-        setAuthError(`Supabase Connection Failed: ${err.message || err}`);
-        playFailureChime();
-        setLoading(false);
-        return;
-      }
-    }
 
     // Check pre-existing accounts locally to avoid visual duplicates
     const exists = registeredAccounts.some(acc => acc.email.toLowerCase() === emailTrim);
@@ -1029,21 +1150,12 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
             transition={{ duration: 0.4 }}
             className="w-full max-w-md bg-[#111111]/95 backdrop-blur-md p-6 md:p-8 rounded-2xl border border-zinc-800 relative z-10 shadow-2xl space-y-6 my-auto"
           >
-            <div className="flex justify-between items-center border-b border-zinc-900 pb-4">
-              <div className="flex items-center gap-3">
-                <EthioLearnLogo size={42} />
-                <div>
-                  <h3 className="font-serif text-base font-bold text-[#F0EDE8]">Student Campus Portal</h3>
-                  <p className="text-[10px] text-zinc-500 tracking-wider">SECURE DEVICE GATEWAY</p>
-                </div>
+            <div className="flex items-center justify-center gap-3 border-b border-zinc-900 pb-4">
+              <EthioLearnLogo size={44} />
+              <div className="text-center">
+                <h3 className="font-serif text-lg font-black text-[#C8962E] tracking-tight">EthioLearn Pro</h3>
+                <p className="text-[10px] text-zinc-400 tracking-widest uppercase font-mono">Student Portal Sign In</p>
               </div>
-              <button
-                onClick={() => { playClickChime(); setMode('splash'); }}
-                className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
-                title="Go back"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
             </div>
 
             {authError && (
@@ -1053,101 +1165,12 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               </div>
             )}
 
-            {/* Supabase Status / Config Collapsible */}
-            <div className="bg-zinc-950/60 border border-zinc-900 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Database className={`w-4 h-4 ${isSupaConfigured ? "text-emerald-500" : "text-amber-500"}`} />
-                  <span className="text-[11px] font-bold tracking-wider uppercase text-zinc-300">
-                    Supabase Authentication
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`inline-block w-2 h-2 rounded-full ${isSupaConfigured ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"}`} />
-                  <span className="text-[9px] font-mono text-zinc-400">
-                    {isSupaConfigured ? "CONNECTED" : "LOCAL BYPASS"}
-                  </span>
-                </div>
+            {infoMessage && (
+              <div className="p-3 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-lg flex items-start gap-2.5">
+                <span className="text-base shrink-0">✉️</span>
+                <p className="font-medium">{infoMessage}</p>
               </div>
-              
-              <div className="text-[10px] text-zinc-400 leading-normal">
-                {isSupaConfigured ? (
-                  <p>All student profiles, enrollments, and academic credentials are securely authenticated and synced using your custom <strong className="text-emerald-400">Supabase SQL database</strong>.</p>
-                ) : (
-                  <p>Supabase connection is not active. The app will run in <strong className="text-amber-400">Offline Local Storage mode</strong>.</p>
-                )}
-              </div>
-
-              <div className="pt-1.5 border-t border-zinc-900">
-                <button
-                  type="button"
-                  onClick={() => { playClickChime(); setShowSupaConfig(!showSupaConfig); }}
-                  className="text-[10px] text-[#C8962E] hover:underline font-bold tracking-wide flex items-center gap-1"
-                >
-                  ⚙️ {showSupaConfig ? "Hide Database Settings" : "Configure Custom Supabase DB"}
-                </button>
-              </div>
-
-              {showSupaConfig && (
-                <div className="space-y-3 pt-2 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                      Supabase Project URL
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="https://your-project-ref.supabase.co"
-                      value={supabaseUrlInput}
-                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
-                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                      Supabase Anon Public API Key
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      value={supabaseKeyInput}
-                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
-                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1.5">
-                    {localStorage.getItem('ethiolearn_supabase_url') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickChime();
-                          localStorage.removeItem('ethiolearn_supabase_url');
-                          localStorage.removeItem('ethiolearn_supabase_key');
-                          setSupabaseUrlInput('');
-                          setSupabaseKeyInput('');
-                          setIsSupaConfigured(false);
-                          setShowSupaConfig(false);
-                          playSuccessChime();
-                        }}
-                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-300 rounded text-[10px] font-bold transition-all"
-                      >
-                        Reset / Disconnect
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleSaveSupaConfig}
-                      className="px-3 py-1 bg-[#C8962E] hover:bg-[#b08123] text-black rounded text-[10px] font-black transition-all cursor-pointer"
-                    >
-                      Save & Connect DB
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {isPopupBlocked && (
               <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-xl space-y-3">
@@ -1169,7 +1192,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 <div className="pt-1.5 pl-6 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={handleGoogleRedirect}
+                    onClick={googleSignInRedirect}
                     className="px-3 py-1.5 bg-[#C8962E] hover:bg-[#b08123] text-black font-extrabold rounded-lg text-[10.5px] transition-all cursor-pointer"
                   >
                     ⚡ Try Redirect Sign-In
@@ -1185,83 +1208,45 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               </div>
             )}
 
-            {/* Quick Login Section (if accounts are stored) */}
-            {registeredAccounts.length > 0 && (
-              <div className="space-y-3">
-                <span className="text-[10px] font-bold text-[#C8962E] font-mono tracking-widest uppercase block">
-                  Quick Access Profiles
-                </span>
-                <div className="grid grid-cols-1 gap-2.5 max-h-36 overflow-y-auto pr-1">
-                  {registeredAccounts.map((acc) => (
-                    <div
-                      key={acc.email}
-                      onClick={() => handleQuickLogin(acc)}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-zinc-900 bg-zinc-950/60 hover:bg-zinc-900/60 hover:border-zinc-800 transition-all cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-full border border-amber-600/30 overflow-hidden bg-zinc-900 flex items-center justify-center shrink-0">
-                          <StudentAvatar avatar={acc.profile.avatar || 'star'} name={acc.profile.name} size={28} />
-                        </div>
-                        <div className="text-left">
-                          <span className="font-serif text-xs font-semibold text-zinc-200 block group-hover:text-amber-500 transition-colors">
-                            {acc.profile.name}
-                          </span>
-                          <span className="font-mono text-[9px] text-zinc-500 block">
-                            {acc.email}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-1.5 font-mono text-[9px]">
-                        {acc.rememberMe ? (
-                          <span className="px-1.5 py-0.5 rounded-full bg-emerald-900/20 border border-emerald-500/30 text-emerald-400 flex items-center gap-1">
-                            <CheckCircle className="w-2.5 h-2.5 text-emerald-400" /> One-Click
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400">
-                            Needs Key
-                          </span>
-                        )}
-                        <ArrowRight className="w-3.5 h-3.5 text-zinc-600 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Main Sign-In Form */}
             <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                  Gmail Address
+                  Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input
                     type="email"
-                    required
-                    placeholder="e.g. abebe@gmail.com"
+                    placeholder="e.g. student@gmail.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#090909] border border-zinc-800 focus:border-[#C8962E] rounded-lg pl-10 pr-4 py-2.5 text-zinc-100 outline-none text-xs transition-all"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailError) setEmailError(null);
+                    }}
+                    className={`w-full bg-[#090909] border ${emailError ? 'border-red-500/80 focus:border-red-500' : 'border-zinc-800 focus:border-[#C8962E]'} rounded-lg pl-10 pr-4 py-2.5 text-zinc-100 outline-none text-xs transition-all`}
                   />
                 </div>
+                {emailError && (
+                  <p className="text-[11px] text-red-500 font-medium pl-1">{emailError}</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                  Password Key
+                  Password
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    required
                     placeholder="••••••••"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#090909] border border-zinc-800 focus:border-[#C8962E] rounded-lg pl-10 pr-10 py-2.5 text-zinc-100 outline-none text-xs transition-all font-mono"
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) setPasswordError(null);
+                    }}
+                    className={`w-full bg-[#090909] border ${passwordError ? 'border-red-500/80 focus:border-red-500' : 'border-zinc-800 focus:border-[#C8962E]'} rounded-lg pl-10 pr-10 py-2.5 text-zinc-100 outline-none text-xs transition-all font-mono`}
                   />
                   <button
                     type="button"
@@ -1269,6 +1254,23 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordError && (
+                  <p className="text-[11px] text-red-500 font-medium pl-1">{passwordError}</p>
+                )}
+                
+                {/* Forgot Password? Link */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playClickChime();
+                      setAuthError("To reset your password, please contact campus administrator Ezra at ezrat2116@gmail.com, or check your verification email.");
+                    }}
+                    className="text-[11px] text-[#C8962E] hover:underline transition-all cursor-pointer font-medium"
+                  >
+                    Forgot password?
                   </button>
                 </div>
               </div>
@@ -1288,15 +1290,21 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
 
               <button
                 type="submit"
-                className="w-full py-3 bg-gradient-to-r from-emerald-600 to-[#1A7A3C] hover:opacity-95 text-[#0d0d0d] font-serif font-extrabold text-xs tracking-wider uppercase rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-transform active:scale-[0.99]"
+                disabled={loading}
+                className="w-full py-3 bg-gradient-to-r from-[#C8962E] to-[#B08123] hover:opacity-95 text-black font-serif font-extrabold text-xs tracking-wider uppercase rounded-lg cursor-pointer flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(200,150,46,0.2)]"
               >
-                <LogIn className="w-4 h-4 text-[#0d0d0d]" /> Enter Campus
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <LogIn className="w-4 h-4 text-black" />
+                )}
+                <span>{loading ? "Signing in..." : "Sign in"}</span>
               </button>
 
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-zinc-800"></div>
-                <span className="flex-shrink mx-4 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">or</span>
-                <div className="flex-grow border-t border-zinc-800"></div>
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-zinc-900"></div>
+                <span className="flex-shrink mx-4 text-[10px] text-zinc-600 font-bold uppercase tracking-widest font-mono">or</span>
+                <div className="flex-grow border-t border-zinc-900"></div>
               </div>
 
               <button
@@ -1304,19 +1312,20 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 onClick={handleGoogleAuth}
                 className="w-full py-3 bg-[#111111] hover:bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-200 rounded-lg text-xs font-serif font-bold tracking-wide flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
               >
-                <span className="text-sm">🎯</span>
-                <span>Continue with Google</span>
+                <span className="text-sm">🌟</span>
+                <span>Sign in with Google</span>
               </button>
             </form>
 
             <div className="text-center pt-2 border-t border-zinc-900/60">
               <p className="text-xs text-zinc-500">
-                Don't have an academic account on this device?{' '}
+                Don't have an account?{' '}
                 <button
+                  type="button"
                   onClick={() => { playClickChime(); setMode('signup'); }}
                   className="text-[#C8962E] font-bold hover:underline cursor-pointer"
                 >
-                  Register Profile
+                  Sign up
                 </button>
               </p>
             </div>
@@ -1342,7 +1351,7 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 </div>
               </div>
               <button
-                onClick={() => { playClickChime(); setMode(registeredAccounts.length > 0 ? 'signin' : 'splash'); }}
+                onClick={() => { playClickChime(); setMode('signin'); }}
                 className="p-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
                 title="Go back"
               >
@@ -1357,101 +1366,12 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
               </div>
             )}
 
-            {/* Supabase Status / Config Collapsible */}
-            <div className="bg-zinc-950/60 border border-zinc-900 rounded-xl p-3.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Database className={`w-4 h-4 ${isSupaConfigured ? "text-emerald-500" : "text-amber-500"}`} />
-                  <span className="text-[11px] font-bold tracking-wider uppercase text-zinc-300">
-                    Supabase Authentication
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className={`inline-block w-2 h-2 rounded-full ${isSupaConfigured ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"}`} />
-                  <span className="text-[9px] font-mono text-zinc-400">
-                    {isSupaConfigured ? "CONNECTED" : "LOCAL BYPASS"}
-                  </span>
-                </div>
+            {infoMessage && (
+              <div className="p-3 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-lg flex items-start gap-2">
+                <span className="text-base shrink-0">✉️</span>
+                <p className="font-medium">{infoMessage}</p>
               </div>
-              
-              <div className="text-[10px] text-zinc-400 leading-normal">
-                {isSupaConfigured ? (
-                  <p>All student profiles, enrollments, and academic credentials are securely authenticated and synced using your custom <strong className="text-emerald-400">Supabase SQL database</strong>.</p>
-                ) : (
-                  <p>Supabase connection is not active. The app will run in <strong className="text-amber-400">Offline Local Storage mode</strong>.</p>
-                )}
-              </div>
-
-              <div className="pt-1.5 border-t border-zinc-900">
-                <button
-                  type="button"
-                  onClick={() => { playClickChime(); setShowSupaConfig(!showSupaConfig); }}
-                  className="text-[10px] text-[#C8962E] hover:underline font-bold tracking-wide flex items-center gap-1"
-                >
-                  ⚙️ {showSupaConfig ? "Hide Database Settings" : "Configure Custom Supabase DB"}
-                </button>
-              </div>
-
-              {showSupaConfig && (
-                <div className="space-y-3 pt-2 text-left">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                      Supabase Project URL
-                    </label>
-                    <input
-                      type="url"
-                      required
-                      placeholder="https://your-project-ref.supabase.co"
-                      value={supabaseUrlInput}
-                      onChange={(e) => setSupabaseUrlInput(e.target.value)}
-                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                      Supabase Anon Public API Key
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      value={supabaseKeyInput}
-                      onChange={(e) => setSupabaseKeyInput(e.target.value)}
-                      className="w-full bg-[#050505] border border-zinc-800 focus:border-[#C8962E] rounded-lg px-2.5 py-1.5 text-zinc-200 outline-none text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2 pt-1.5">
-                    {localStorage.getItem('ethiolearn_supabase_url') && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickChime();
-                          localStorage.removeItem('ethiolearn_supabase_url');
-                          localStorage.removeItem('ethiolearn_supabase_key');
-                          setSupabaseUrlInput('');
-                          setSupabaseKeyInput('');
-                          setIsSupaConfigured(false);
-                          setShowSupaConfig(false);
-                          playSuccessChime();
-                        }}
-                        className="px-2.5 py-1 bg-red-950/40 hover:bg-red-900/40 border border-red-500/30 text-red-300 rounded text-[10px] font-bold transition-all"
-                      >
-                        Reset / Disconnect
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleSaveSupaConfig}
-                      className="px-3 py-1 bg-[#C8962E] hover:bg-[#b08123] text-black rounded text-[10px] font-black transition-all cursor-pointer"
-                    >
-                      Save & Connect DB
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {isPopupBlocked && (
               <div className="p-4 bg-amber-950/20 border border-amber-500/30 text-amber-200 text-xs rounded-xl space-y-3">
@@ -1488,6 +1408,11 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
                 </div>
               </div>
             )}
+
+            {/* Supabase connection manager */}
+            <div className="mb-4">
+              {renderSupabaseConfigPanel()}
+            </div>
 
             <form onSubmit={handleRegister} className="space-y-4">
               
@@ -1671,12 +1596,13 @@ export default function SplashOnboarding({ onComplete, initialProfile }: SplashO
 
             <div className="text-center pt-2 border-t border-zinc-900/60">
               <p className="text-xs text-zinc-500">
-                Already registered on this browser?{' '}
+                Already have an account?{' '}
                 <button
+                  type="button"
                   onClick={() => { playClickChime(); setMode('signin'); }}
                   className="text-[#C8962E] font-bold hover:underline cursor-pointer"
                 >
-                  Student Login
+                  Sign in
                 </button>
               </p>
             </div>

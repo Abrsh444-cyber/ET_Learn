@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Compass, Trophy, Zap, Clock, Calendar, ArrowRight, Sparkles, FileText, CheckCircle, XCircle, HelpCircle, Award, RefreshCw
+  Compass, Trophy, Zap, Clock, Calendar, ArrowRight, Sparkles, FileText, CheckCircle, XCircle, HelpCircle, Award, RefreshCw, Plus, X
 } from 'lucide-react';
 import { playClickChime, playSuccessChime, playFailureChime } from '../utils/audio';
 import { generateQuizAI, submitClaudeChat, ChatMessage } from '../utils/ai';
@@ -170,20 +170,209 @@ const PAST_EXAM_BANK: { [subject: string]: QuizQuestion[] } = {
       correctAnswer: "To deallocate memory and clean up resources when an object goes out of scope",
       explanation: "Destructors are special member functions called automatically when an object is destroyed or goes out of scope, releasing acquired heap resources."
     }
+  ],
+  "Civics": [
+    {
+      question: "Which of the following is a key feature of a democratic system?",
+      options: ["Rule of Law and accountability", "Absolute power of the executive branch", "State control of all private property", "Inherited royal leadership"],
+      correctAnswer: "Rule of Law and accountability",
+      explanation: "In a fully democratic system, all citizens and governmental bodies are subject to the Rule of Law, with periodic elections establishing clear accountability."
+    },
+    {
+      question: "What is the primary role of the House of Federation (HoF) in the Federal Democratic Republic of Ethiopia?",
+      options: ["Interpreting the Federal Constitution and resolving regional disputes", "Drafting and enacting national commercial codes", "Serving as the commander-in-chief of defense forces", "Representing Ethiopia in foreign diplomatic missions"],
+      correctAnswer: "Interpreting the Federal Constitution and resolving regional disputes",
+      explanation: "According to the 1995 FDRE Constitution, the House of Federation has the ultimate power of constitutional interpretation and federal dispute resolution."
+    }
+  ],
+  "Agriculture": [
+    {
+      question: "Which soil conservation method involves planting crops across a slope following elevation lines to reduce water erosion?",
+      options: ["Contour ploughing", "Monoculture farming", "Shifting cultivation", "Chemical slash-and-burn"],
+      correctAnswer: "Contour ploughing",
+      explanation: "Contour ploughing creates water break barriers along elevation contours, reducing soil runoff and increasing water infiltration significantly."
+    },
+    {
+      question: "In animal nutrition, what is the primary purpose of adding leguminous forage (like Alfalfa) to livestock feed?",
+      options: ["To provide high protein content and nitrogen-fixing benefits", "To decrease the digestion rate of complex cellulose", "To eliminate the need for minerals and water intake", "To artificialize milk fats production in lactating cows"],
+      correctAnswer: "To provide high protein content and nitrogen-fixing benefits",
+      explanation: "Leguminous plants are rich in digestible proteins, amino acids, and minerals, which drastically improve livestock growth and milk yield."
+    }
+  ],
+  "Business": [
+    {
+      question: "In accounting, what is the fundamental accounting equation that governs double-entry bookkeeping?",
+      options: ["Assets = Liabilities + Owner's Equity", "Assets + Liabilities = Owner's Equity", "Revenues = Expenses + Net Income", "Assets = Current Assets + Non-Current Assets"],
+      correctAnswer: "Assets = Liabilities + Owner's Equity",
+      explanation: "The accounting equation states that a company's total assets are funded by either borrowing (liabilities) or owners' capital contributions (equity)."
+    },
+    {
+      question: "Which form of business ownership offers limited liability to its owners but is subject to double taxation?",
+      options: ["A Share Company (Corporation)", "A Sole Proprietorship", "A General Partnership", "A Joint Venture"],
+      correctAnswer: "A Share Company (Corporation)",
+      explanation: "Corporations (Share Companies) protect owners via limited liability, but face double taxation: once on corporate earnings, and once on individual dividends."
+    }
+  ],
+  "Moral and Civics": [
+    {
+      question: "According to ethical theories, which philosophical view holds that the moral value of an action is determined solely by its ultimate consequences?",
+      options: ["Utilitarianism (Consequentialism)", "Deontological Ethics (Kantian)", "Virtue Ethics (Aristotelian)", "Ethical Relativism"],
+      correctAnswer: "Utilitarianism (Consequentialism)",
+      explanation: "Utilitarianism, popularized by Bentham and Mill, evaluates actions based on their consequences, aiming to maximize the greatest happiness for the greatest number."
+    },
+    {
+      question: "Which type of state structure distributes political and administrative power between a central government and autonomous regional units?",
+      options: ["A Federal State Structure", "A Unitary State Structure", "An Absolute Monarchy", "A Totalitarian Autocracy"],
+      correctAnswer: "A Federal State Structure",
+      explanation: "Federalism divides sovereignty between central and constituent state governments (such as in Ethiopia), safeguarding regional autonomy while preserving national integrity."
+    }
+  ],
+  "Emerging Tech": [
+    {
+      question: "Which concept refers to a system of physical objects embedded with sensors, software, and network connections that exchange data without human intervention?",
+      options: ["Internet of Things (IoT)", "Centralized Batch Mainframe", "Hypertext Transfer Protocol (HTTP)", "Local Area Networking (LAN)"],
+      correctAnswer: "Internet of Things (IoT)",
+      explanation: "IoT describes the network of smart physical items collecting and sharing data in real-time, enabling smart cities and industrial automation (Industry 4.0)."
+    },
+    {
+      question: "What is the main role of a smart contract in a blockchain platform like Ethereum?",
+      options: ["To automatically execute contractual terms when predefined conditions are met", "To encrypt user wallets with secure physical backup hardware", "To generate block hashes using graphics processing units", "To translate Ge'ez characters into binary machine code"],
+      correctAnswer: "To automatically execute contractual terms when predefined conditions are met",
+      explanation: "Smart contracts are self-executing computerized protocols that run directly on blockchain ledgers, automating agreement validation without trusted third parties."
+    }
+  ],
+  "Applied Math": [
+    {
+      question: "What is the derivative of the function f(x) = x * ln(x) with respect to x?",
+      options: ["ln(x) + 1", "ln(x)", "1/x", "x + ln(x)"],
+      correctAnswer: "ln(x) + 1",
+      explanation: "Using the product rule, d/dx[u*v] = u'v + uv'. Thus, d/dx[x*ln(x)] = (1)*ln(x) + x*(1/x) = ln(x) + 1."
+    },
+    {
+      question: "What does the divergence of a vector field physically represent in fluid dynamics?",
+      options: ["The net rate of expansion or contraction of fluid volume at a given point", "The rotational angular velocity or spin of fluid particles", "The maximum rate of directional temperature increases", "The conservative energy path integral over a closed loop"],
+      correctAnswer: "The net rate of expansion or contraction of fluid volume at a given point",
+      explanation: "Mathematically, the divergence (∇·F) measures whether a vector field behaves as a fluid source (positive divergence) or a fluid sink (negative divergence)."
+    }
   ]
 };
 
 export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: ExamPrepProps) {
-  const [selectedSubject, setSelectedSubject] = useState(enrolledSubjects[0] || "Emerging Technologies");
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
-  const [qCount, setQCount] = useState<number>(5);
-  const [customNeeds, setCustomNeeds] = useState<string>('');
-
   // Load language settings from localStorage
   const [language, setLanguage] = useState<'en' | 'am'>(() => {
     const saved = localStorage.getItem('ethiolearn_language_preference');
     return (saved === 'am' || saved === 'en') ? saved : 'en';
   });
+
+  const [customQuestionBank, setCustomQuestionBank] = useState<{ [subject: string]: QuizQuestion[] }>(() => {
+    try {
+      const stored = localStorage.getItem('ethiolearn_custom_exams');
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [allSubjects, setAllSubjects] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('ethiolearn_custom_exams');
+      const customSubjects = stored ? Object.keys(JSON.parse(stored)) : [];
+      return Array.from(new Set([...enrolledSubjects, ...customSubjects]));
+    } catch (e) {
+      return enrolledSubjects;
+    }
+  });
+
+  const [selectedSubject, setSelectedSubject] = useState(() => {
+    try {
+      const stored = localStorage.getItem('ethiolearn_custom_exams');
+      const customSubjects = stored ? Object.keys(JSON.parse(stored)) : [];
+      const combined = Array.from(new Set([...enrolledSubjects, ...customSubjects]));
+      return combined[0] || "Emerging Technologies";
+    } catch (e) {
+      return enrolledSubjects[0] || "Emerging Technologies";
+    }
+  });
+
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [qCount, setQCount] = useState<number>(5);
+  const [customNeeds, setCustomNeeds] = useState<string>('');
+
+  // Custom exam form states
+  const [showAddExamModal, setShowAddExamModal] = useState(false);
+  const [newExamSubject, setNewExamSubject] = useState('');
+  const [newQuestionText, setNewQuestionText] = useState('');
+  const [newOptionA, setNewOptionA] = useState('');
+  const [newOptionB, setNewOptionB] = useState('');
+  const [newOptionC, setNewOptionC] = useState('');
+  const [newOptionD, setNewOptionD] = useState('');
+  const [newCorrectOption, setNewCorrectOption] = useState<'A' | 'B' | 'C' | 'D'>('A');
+  const [newExplanation, setNewExplanation] = useState('');
+
+  const handleAddCustomQuestion = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExamSubject.trim() || !newQuestionText.trim() || !newOptionA.trim() || !newOptionB.trim() || !newOptionC.trim() || !newOptionD.trim()) {
+      alert(language === 'en' ? 'Please fill out all required fields!' : 'እባክዎን ሁሉንም አስፈላጊ ቦታዎች ይሙሉ!');
+      return;
+    }
+
+    const correctMap = {
+      'A': newOptionA.trim(),
+      'B': newOptionB.trim(),
+      'C': newOptionC.trim(),
+      'D': newOptionD.trim()
+    };
+
+    const newQn: QuizQuestion = {
+      question: newQuestionText.trim(),
+      options: [newOptionA.trim(), newOptionB.trim(), newOptionC.trim(), newOptionD.trim()],
+      correctAnswer: correctMap[newCorrectOption],
+      explanation: newExplanation.trim() || undefined
+    };
+
+    const subjectKey = newExamSubject.trim();
+
+    try {
+      const stored = localStorage.getItem('ethiolearn_custom_exams');
+      const bank = stored ? JSON.parse(stored) : {};
+      
+      if (!bank[subjectKey]) {
+        bank[subjectKey] = [];
+      }
+      bank[subjectKey].push(newQn);
+      
+      localStorage.setItem('ethiolearn_custom_exams', JSON.stringify(bank));
+      setCustomQuestionBank(bank);
+      
+      // Update subjects list if it's a brand new subject
+      if (!allSubjects.includes(subjectKey)) {
+        setAllSubjects(prev => {
+          const updated = [...prev, subjectKey];
+          return Array.from(new Set(updated));
+        });
+      }
+      
+      setSelectedSubject(subjectKey);
+      playSuccessChime();
+      alert(language === 'en' 
+        ? `Successfully added your question to subject "${subjectKey}"! You can now select this subject and take your custom exam.` 
+        : `ጥያቄዎ በ"${subjectKey}" ስር በተሳካ ሁኔታ ተቀምጧል! አሁን መፈተን ይችላሉ።`
+      );
+
+      // Reset
+      setNewQuestionText('');
+      setNewOptionA('');
+      setNewOptionB('');
+      setNewOptionC('');
+      setNewOptionD('');
+      setNewExplanation('');
+      setNewCorrectOption('A');
+      setShowAddExamModal(false);
+    } catch (err) {
+      console.error(err);
+      playFailureChime();
+    }
+  };
 
   const [examMode, setExamMode] = useState<'setup' | 'active' | 'results'>('setup');
   const [examQuestions, setExamQuestions] = useState<QuizQuestion[]>([]);
@@ -247,7 +436,10 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
   };
 
   const handleStartPastExam = () => {
-    const bank = PAST_EXAM_BANK[selectedSubject];
+    const defaultBank = PAST_EXAM_BANK[selectedSubject] || [];
+    const customBankForSubject = customQuestionBank[selectedSubject] || [];
+    const bank = [...customBankForSubject, ...defaultBank];
+
     if (!bank || bank.length === 0) {
       setLoadingText(
         language === 'en' 
@@ -300,7 +492,9 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
       console.warn('AI exam generation failed/offline. Activating exam bank fallback:', err);
       
       // Look up subject in local bank or default to Emerging Technologies
-      let fallbackList = PAST_EXAM_BANK[selectedSubject] || PAST_EXAM_BANK["Emerging Technologies"];
+      const defaultBank = PAST_EXAM_BANK[selectedSubject] || PAST_EXAM_BANK["Emerging Technologies"] || [];
+      const customBankForSubject = customQuestionBank[selectedSubject] || [];
+      const fallbackList = [...customBankForSubject, ...defaultBank];
       
       setExamQuestions(fallbackList);
       setExamMode('active');
@@ -468,11 +662,13 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
           >
             {/* Form configuration panel */}
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-              <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
-                <Compass className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-serif font-bold text-base text-slate-900">
-                  {language === 'en' ? 'Start a Quiz' : 'ፈተና ጀምር'}
-                </h3>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Compass className="w-5 h-5 text-emerald-600" />
+                  <h3 className="font-serif font-bold text-base text-slate-900">
+                    {language === 'en' ? 'Start a Quiz' : 'ፈተና ጀምር'}
+                  </h3>
+                </div>
               </div>
 
               {/* Subject dropdown */}
@@ -483,7 +679,7 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
                   onChange={(e) => setSelectedSubject(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 text-slate-800 font-sans font-semibold rounded-xl py-3 px-3.5 outline-none cursor-pointer focus:border-emerald-600"
                 >
-                  {enrolledSubjects.map(s => (
+                  {allSubjects.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
@@ -848,6 +1044,169 @@ export default function ExamPrep({ apiKey, enrolledSubjects, onStudyAction }: Ex
             >
               {language === 'en' ? 'Practice Another Quiz' : 'ሌላ የፈተና ጥያቄ ውሰድ'}
             </button>
+          </motion.div>
+        )}
+
+        {showAddExamModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[999] flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => setShowAddExamModal(false)}
+            id="add-custom-exam-modal-overlay"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative text-left border border-slate-200"
+              onClick={(e) => e.stopPropagation()}
+              id="add-custom-exam-modal-card"
+            >
+              <button
+                onClick={() => { playClickChime(); setShowAddExamModal(false); }}
+                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="space-y-1.5">
+                <h3 className="font-serif font-black text-lg text-slate-900 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-[#078930]" />
+                  {language === 'en' ? 'Add Exam Question / Subject' : 'የፈተና ጥያቄ / የትምህርት አይነት ጨምር'}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {language === 'en' 
+                    ? 'Create your own multiple choice exam questions. They will be added to your custom quiz selection instantly.' 
+                    : 'የራስዎን የፈተና ጥያቄዎች ያዘጋጁ። ወዲያውኑ ወደ የጥያቄዎች ማውጫዎ ውስጥ ይካተታሉ።'}
+                </p>
+              </div>
+
+              <form onSubmit={handleAddCustomQuestion} className="space-y-3 text-xs text-slate-700">
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-500">Subject Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newExamSubject}
+                    onChange={(e) => setNewExamSubject(e.target.value)}
+                    placeholder="e.g. Freshman Civics, Chemistry Unit 3"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                  />
+                  <p className="text-[10px] text-slate-400">
+                    Use an existing subject name to add a question to it, or type a new one to create a brand-new exam category.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-500">Question Text *</label>
+                  <textarea
+                    required
+                    value={newQuestionText}
+                    onChange={(e) => setNewQuestionText(e.target.value)}
+                    placeholder="What is the constitutional status of Ethiopia's regional states?"
+                    rows={2}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930] resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-500">Option A *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newOptionA}
+                      onChange={(e) => setNewOptionA(e.target.value)}
+                      placeholder="Choice A"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-500">Option B *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newOptionB}
+                      onChange={(e) => setNewOptionB(e.target.value)}
+                      placeholder="Choice B"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-500">Option C *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newOptionC}
+                      onChange={(e) => setNewOptionC(e.target.value)}
+                      placeholder="Choice C"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-500">Option D *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newOptionD}
+                      onChange={(e) => setNewOptionD(e.target.value)}
+                      placeholder="Choice D"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 col-span-2">
+                    <label className="block font-bold uppercase text-slate-500">Correct Option Choice *</label>
+                    <div className="grid grid-cols-4 gap-2 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                      {(['A', 'B', 'C', 'D'] as const).map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => { setNewCorrectOption(opt); playClickChime(); }}
+                          className={`py-2 text-xs font-bold rounded-lg cursor-pointer ${
+                            newCorrectOption === opt ? 'bg-[#078930] text-white shadow-sm' : 'text-slate-500'
+                          }`}
+                        >
+                          Option {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-500">Explanation (Optional Detail)</label>
+                  <input
+                    type="text"
+                    value={newExplanation}
+                    onChange={(e) => setNewExplanation(e.target.value)}
+                    placeholder="Provide context explaining why this selection is correct..."
+                    className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-950 outline-none focus:ring-1 focus:ring-[#078930]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setShowAddExamModal(false); }}
+                    className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#078930] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Save Exam Question
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

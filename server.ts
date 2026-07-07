@@ -592,26 +592,21 @@ Explain with enthusiasm when they ask about features like flashcards, customizab
         });
 
         let stream;
-try {
-  stream = await ai.models.generateContentStream({
-    model: 'gemini-3.5-flash',
-    contents: geminiContents,
-    config: {
-      systemInstruction: system || undefined,
-    },
-  });
-} } catch (geminiErr) {
-  console.warn('[EthioLearn Server] Gemini unavailable, showing friendly message');
-  res.write(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: 'Your AI tutor is briefly busy — please try again shortly.' } })}\n\n`);
-  res.write('data: [DONE]\n\n');
-  res.end();
-  return;
-}
-
-for await (const chunk of stream) {
-}
-
-        });
+        try {
+          stream = await ai.models.generateContentStream({
+            model: 'gemini-3.5-flash',
+            contents: geminiContents,
+            config: {
+              systemInstruction: system || undefined,
+            },
+          });
+        } catch (geminiErr) {
+          console.warn('[EthioLearn Server] Gemini unavailable, showing friendly message');
+          res.write(`data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: 'Your AI tutor is briefly busy — please try again shortly.' } })}\n\n`);
+          res.write('data: [DONE]\n\n');
+          res.end();
+          return;
+        }
 
         for await (const chunk of stream) {
           const content = chunk.text;

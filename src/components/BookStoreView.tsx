@@ -47,7 +47,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Comprehensive Ministry Exam prep module covering differential calculus, limits, sequence notation, and solid geometry calculations with Amharic translations.',
     languageSupport: 'Bilingual',
     proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Mathematics-Student-Textbook.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/mathematics'
   },
   {
     id: 'g12_english',
@@ -59,7 +59,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Specially structured to help high school students excel in national standardized English layouts, active-passive voice transitions, and comprehension skills.',
     languageSupport: 'Bilingual',
     proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-English-Student-Textbook.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/english'
   },
   {
     id: 'g12_physics',
@@ -71,7 +71,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Advanced matric revision guide summarizing magnetic flux equations, transformers, line spectra, photoelectric effect, and radioactive half-lives.',
     languageSupport: 'Bilingual',
     proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Physics-Student-Textbook.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/physics'
   },
   {
     id: 'g12_chemistry',
@@ -83,7 +83,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Detailed study on buffer actions, pH indicators, Lewis theories, galvanic cells, and standard IUPAC nomenclature schemes.',
     languageSupport: 'Bilingual',
     proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Chemistry-Student-Textbook.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/chemistry'
   },
   {
     id: 'g12_biology',
@@ -95,7 +95,19 @@ const PREBUILT_MODULES: ModuleResource[] = [
     description: 'Targeted revision for national entrance exam genetics calculations, population genetics rules, and environmental issues facing Ethiopia.',
     languageSupport: 'Bilingual',
     proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Biology-Student-Textbook.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/biology'
+  },
+  {
+    id: 'g12_amharic',
+    title: 'Grade 12 Amharic (አማርኛ) Student Textbook',
+    subject: 'Amharic',
+    grade: 'Grade 12',
+    chapters: ['Chapter 1: ስነ-ጽሁፍ እና ባህል (Literature & Culture)', 'Chapter 2: ንባብና መረዳት (Reading & Comprehension)', 'Chapter 3: የቃላት ጥናትና ሰዋስው (Vocabulary & Grammar)', 'Chapter 4: የጽሕፈት ስልቶች (Writing Styles)'],
+    pages: 110,
+    description: 'Official Ministry Grade 12 Amharic language companion. Study grammar, vocabulary, reading comprehension, and literature analysis.',
+    languageSupport: 'Bilingual',
+    proRequired: false,
+    pdfUrl: 'https://fetena.net/books/grade-12/amharic'
   },
   {
     id: 'g12_aptitude',
@@ -106,8 +118,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 160,
     description: 'Specially curated reasoning builder focusing on typical math aptitude patterns, visual sequences, and critical thinking matrices for entrance exams.',
     languageSupport: 'Bilingual',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Grade-12-Aptitude-And-Analytical-Reasoning.pdf'
+    proRequired: true
   },
 
   // --- UNIVERSITY ---
@@ -120,8 +131,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 195,
     description: 'Standard textbook helper matching Ethiopian public universities curriculum. Includes truth tables, complex algebra, and functions conversion guidelines with AI step solver.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Freshman-Mathematics-Math-1011-Module.pdf'
+    proRequired: true
   },
   {
     id: 'uni_applied_math',
@@ -132,8 +142,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 240,
     description: 'Advanced applied engineering mathematical formulas. Features trigonometric substitutions, Taylor series, and volume calculations via double integrals.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Applied-Calculus-Math-1012-Module.pdf'
+    proRequired: true
   },
   {
     id: 'uni_english',
@@ -144,8 +153,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 98,
     description: 'Core freshman curriculum guidebook to excel in university-level comprehension, syntactic styles, and academic arguments.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Communicative-English-Skills-I-FLEn-1011.pdf'
+    proRequired: false
   },
   {
     id: 'uni_english_2',
@@ -156,8 +164,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 110,
     description: 'Focuses on peer essays editing, bibliography formatting, and writing logical, structured reports as a university scholar.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Writing-Skills-II-FLEn-1012.pdf'
+    proRequired: true
   },
   {
     id: 'uni_physics',
@@ -168,8 +175,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 215,
     description: 'Rigorous freshman guide centered on physical concepts: work-kinetic calculations, harmonic pendulum frequencies, and ray tracing.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/General-Physics-Phys-1011-Module.pdf'
+    proRequired: true
   },
   {
     id: 'uni_chemistry',
@@ -180,8 +186,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 220,
     description: 'University level molecular orbital theory, orbital hybridization, boiling point elevations, and activation energy calculations with AI solver tutorials.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/General-Chemistry-Chem-1011-Module.pdf'
+    proRequired: true
   },
   {
     id: 'uni_biology',
@@ -192,8 +197,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 185,
     description: 'Study of cellular respiration pathways, ATP models, enzyme activity limits, prokaryote structures, and plant physiology.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/General-Biology-Biol-1011-Module.pdf'
+    proRequired: false
   },
   {
     id: 'uni_anthropology',
@@ -204,8 +208,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 130,
     description: 'Explore human diversity, tribal custom definitions, ethnographic field research methods, and pluralistic contexts in the Horn of Africa.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Social-Anthropology-Anth-1012-Module.pdf'
+    proRequired: false
   },
   {
     id: 'uni_logic',
@@ -216,8 +219,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 145,
     description: 'Unlock argumentative rigor. Learn to outline deductive logic structures, identify cognitive traps, and construct formal proofs with AI reasoning explanations.',
     languageSupport: 'English Only',
-    proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Introduction-to-Logic-and-Critical-Thinking-Phil-1011.pdf'
+    proRequired: true
   },
   {
     id: 'uni_psychology',
@@ -228,8 +230,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 152,
     description: 'Deep dive into neuropsychology, Pavlovian conditioning mechanisms, proactive interference, developmental stages, and stress tolerance.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/General-Psychology-and-Life-Skills-Pscy-1011.pdf'
+    proRequired: false
   },
   {
     id: 'uni_inclusiveness',
@@ -240,8 +241,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 112,
     description: 'Framework of special needs learning support, behavioral adjustments, visual or hearing aids integrations, and human dignity principles.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Inclusiveness-Incl-1012-Module.pdf'
+    proRequired: false
   },
   {
     id: 'uni_entrepreneurship',
@@ -252,8 +252,7 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 138,
     description: 'Essential entrepreneurial toolbox. Covers competitive audits, value propositions, resource constraints, startup funding hacks, and local taxation.',
     languageSupport: 'English Only',
-    proRequired: false,
-    pdfUrl: 'https://kehulum.com/uploads/books/Freshman-Entrepreneurship-Mgmt-1012.pdf'
+    proRequired: false
   },
   {
     id: 'uni_cpp',
@@ -264,8 +263,134 @@ const PREBUILT_MODULES: ModuleResource[] = [
     pages: 175,
     description: 'Hands-on programming guide. Master logical arrays, sequential flows, parameter passing, and syntax structures with custom AI code-review solver tools.',
     languageSupport: 'English Only',
+    proRequired: true
+  },
+  {
+    id: 'g12_civics',
+    title: 'Grade 12 Civics and Ethical Education Student Textbook',
+    subject: 'Civics',
+    grade: 'Grade 12',
+    chapters: ['Chapter 1: Building a Democratic System', 'Chapter 2: The Rule of Law and Judicial Organs', 'Chapter 3: Human and Democratic Rights', 'Chapter 4: Active Community Participation & Patriotism'],
+    pages: 140,
+    description: 'Official Ministry textbook on federalism models, human rights codes, constitution principles, and civic duties for high school matric.',
+    languageSupport: 'Bilingual',
+    proRequired: false,
+    pdfUrl: 'https://fetena.net/books/grade-12/civics-and-ethical-education'
+  },
+  {
+    id: 'g12_agriculture',
+    title: 'Grade 12 Agriculture Student Textbook (New Curriculum)',
+    subject: 'Agriculture',
+    grade: 'Grade 12 New Curriculum',
+    chapters: ['Chapter 1: Crop Production & Soil Science in Ethiopia', 'Chapter 2: Animal Husbandry & Poultry Farming', 'Chapter 3: Agricultural Economics & Farm Management', 'Chapter 4: Modern Irrigation and Water Conservation'],
+    pages: 156,
+    description: 'Comprehensive study of agrarian science, soil conservation cycles, livestock husbandry, and smart water resources management in East Africa.',
+    languageSupport: 'Bilingual',
+    proRequired: false
+  },
+  {
+    id: 'g12_business',
+    title: 'Grade 12 Business Studies Student Textbook',
+    subject: 'Business',
+    grade: 'Grade 12',
+    chapters: ['Chapter 1: Nature and Scope of Business', 'Chapter 2: Business Environments and Ethics', 'Chapter 3: Forms of Business Ownership (Sole, Share)', 'Chapter 4: Basic Accounting Principles & Ledger Sheets'],
+    pages: 130,
+    description: 'Core concepts of entrepreneurship, financial accounting ledgers, ethical trade structures, and management frameworks in Ethiopia.',
+    languageSupport: 'Bilingual',
     proRequired: true,
-    pdfUrl: 'https://kehulum.com/uploads/books/Introduction-to-Computer-Programming-Cplusplus.pdf'
+    pdfUrl: 'https://fetena.net/books/grade-12/general-business'
+  },
+  {
+    id: 'g12_new_economics',
+    title: 'Grade 12 Economics Student Textbook (New Curriculum)',
+    subject: 'Economics',
+    grade: 'Grade 12 New Curriculum',
+    chapters: ['Chapter 1: Theory of Consumer Behavior', 'Chapter 2: Market Structure and Perfect Competition', 'Chapter 3: Macroeconomic Indicators in Ethiopia', 'Chapter 4: Monetary and Fiscal Policies'],
+    pages: 168,
+    description: 'Official Ministry new curriculum guide on demand elasticities, utility maximizations, inflation thresholds, and national bank monetary tools.',
+    languageSupport: 'Bilingual',
+    proRequired: false,
+    pdfUrl: 'https://fetena.net/books/grade-12/economics'
+  },
+  {
+    id: 'g12_new_geography',
+    title: 'Grade 12 Geography Student Textbook (New Curriculum)',
+    subject: 'Geography',
+    grade: 'Grade 12 New Curriculum',
+    chapters: ['Chapter 1: Geological Structure and Landforms of Ethiopia', 'Chapter 2: Climate and Weather Systems of East Africa', 'Chapter 3: Natural Resource Management & Conservation', 'Chapter 4: Population Density and Urbanization Profiles'],
+    pages: 182,
+    description: 'Comprehensive spatial analysis of Ethiopian highlands rift valleys, traditional farming soil cycles, and regional hydrological basins.',
+    languageSupport: 'Bilingual',
+    proRequired: false,
+    pdfUrl: 'https://fetena.net/books/grade-12/geography'
+  },
+  {
+    id: 'g12_new_history',
+    title: 'Grade 12 History Student Textbook (New Curriculum)',
+    subject: 'History',
+    grade: 'Grade 12 New Curriculum',
+    chapters: ['Chapter 1: Human Beginnings & Stone Age Cultures in the Horn', 'Chapter 2: State Formations, Trade and Religions (Axum, Lalibela)', 'Chapter 3: Modern Ethiopian State Unifications (1855-1974)', 'Chapter 4: The Federal Democratic Era & Contemporary Milestones'],
+    pages: 210,
+    description: 'New curriculum history resource mapping prehistoric sites like Hadar, early civilizations, Battle of Adwa victory details, and constitutional updates.',
+    languageSupport: 'Bilingual',
+    proRequired: true,
+    pdfUrl: 'https://fetena.net/books/grade-12/history'
+  },
+  {
+    id: 'g12_new_it',
+    title: 'Grade 12 Information Technology Student Textbook (New Curriculum)',
+    subject: 'Information Technology',
+    grade: 'Grade 12 New Curriculum',
+    chapters: ['Chapter 1: Advanced Information Systems & Databases', 'Chapter 2: Computer Networking & Cyber-Defenses', 'Chapter 3: Web Development Fundamentals (HTML, CSS, JS)', 'Chapter 4: Algorithms, Python Scripting & Emerging Algos'],
+    pages: 154,
+    description: 'Official guide covering relational database schemas, web authoring elements, and logical block scripting paradigms for high schoolers.',
+    languageSupport: 'Bilingual',
+    proRequired: true,
+    pdfUrl: 'https://fetena.net/books/grade-12/ict'
+  },
+  {
+    id: 'uni_civics',
+    title: 'Moral and Civic Education Freshman Module (MCiE 1012)',
+    subject: 'Moral and Civics',
+    grade: 'University',
+    chapters: ['Chapter 1: Understanding Civics, Morality, and Ethics', 'Chapter 2: State, Government, and Citizenship Foundations', 'Chapter 3: Human Rights and Constitutionalism in Ethiopia', 'Chapter 4: Democracy and Good Governance Indicators'],
+    pages: 165,
+    description: 'Essential freshman civic education module. Covers ethical theories, federal state structures, public responsibility, and global cooperation frameworks.',
+    languageSupport: 'English Only',
+    proRequired: false
+  },
+  {
+    id: 'uni_geography',
+    title: 'Geography of Ethiopia and the Horn (GeES 1011)',
+    subject: 'Geography',
+    grade: 'University',
+    chapters: ['Chapter 1: Introduction to Geography & Spatial Coordinates', 'Chapter 2: Geological Structure & Physiographic Divisions', 'Chapter 3: Drainage Systems & Water Basins of Ethiopia', 'Chapter 4: Climate, Soil Systems, and Demography'],
+    pages: 188,
+    description: 'Standard freshman geography module covering tectonic plates, Abbay (Blue Nile) and Awash basins, highland soil types, and population geography.',
+    languageSupport: 'English Only',
+    proRequired: false
+  },
+  {
+    id: 'uni_emerging_tech',
+    title: 'Introduction to Emerging Technologies Freshman Module (EmTe 1012)',
+    subject: 'Emerging Tech',
+    grade: 'University',
+    chapters: ['Chapter 1: Introduction to Industry 4.0 & Digital Transformation', 'Chapter 2: Artificial Intelligence & Machine Learning Frameworks', 'Chapter 3: Internet of Things (IoT) & Smart Systems', 'Chapter 4: Blockchain, Cybersecurity, and Cloud Infrastructures'],
+    pages: 145,
+    description: 'Covers the 4th industrial revolution (4IR) technologies: smart actuators, deep neural networks, cryptographic ledgers, and secure cloud orchestration.',
+    languageSupport: 'English Only',
+    proRequired: true
+  },
+  {
+    id: 'uni_economics',
+    title: 'Introduction to Economics Freshman Module (Econ 1011)',
+    subject: 'Economics',
+    grade: 'University',
+    chapters: ['Chapter 1: Fundamental Concepts of Economics', 'Chapter 2: Market Demand, Supply, and Price Equilibrium', 'Chapter 3: Theory of Production and Cost Analysis', 'Chapter 4: Introduction to Macroeconomics and GDP'],
+    pages: 172,
+    description: 'Standard curriculum guide for first-year students. Explains opportunity cost, production frontiers, utility indifference curves, cost curves, and macroeconomic models.',
+    languageSupport: 'English Only',
+    proRequired: false
   }
 ];
 
@@ -281,54 +406,18 @@ export default function BookStoreView({
   const [selectedGrade, setSelectedGrade] = useState<string>('All');
   
   // All active modules state
-  const [allModules, setAllModules] = useState<ModuleResource[]>([
-    ...PREBUILT_MODULES,
-    // Grade 12 New Curriculum books
-    {
-      id: 'g12_new_economics',
-      title: 'Grade 12 Economics New Curriculum Textbook',
-      subject: 'Economics',
-      grade: 'Grade 12 New Curriculum',
-      chapters: ['Chapter 1: Theory of Consumer Behavior', 'Chapter 2: Market Structure and Perfect Competition', 'Chapter 3: Macroeconomic Indicators in Ethiopia', 'Chapter 4: Monetary and Fiscal Policies'],
-      pages: 168,
-      description: 'Official Ministry new curriculum guide on demand elasticities, utility maximizations, inflation thresholds, and national bank monetary tools.',
-      languageSupport: 'Bilingual',
-      proRequired: false,
-    },
-    {
-      id: 'g12_new_geography',
-      title: 'Grade 12 Geography New Curriculum Textbook',
-      subject: 'Geography',
-      grade: 'Grade 12 New Curriculum',
-      chapters: ['Chapter 1: Geological Structure and Landforms of Ethiopia', 'Chapter 2: Climate and Weather Systems of East Africa', 'Chapter 3: Natural Resource Management & Conservation', 'Chapter 4: Population Density and Urbanization Profiles'],
-      pages: 182,
-      description: 'Comprehensive spatial analysis of Ethiopian highlands rift valleys, traditional farming soil cycles, and regional hydrological basins.',
-      languageSupport: 'Bilingual',
-      proRequired: false,
-    },
-    {
-      id: 'g12_new_history',
-      title: 'Grade 12 History New Curriculum Textbook',
-      subject: 'History',
-      grade: 'Grade 12 New Curriculum',
-      chapters: ['Chapter 1: Human Beginnings & Stone Age Cultures in the Horn', 'Chapter 2: State Formations, Trade and Religions (Axum, Lalibela)', 'Chapter 3: Modern Ethiopian State Unifications (1855-1974)', 'Chapter 4: The Federal Democratic Era & Contemporary Milestones'],
-      pages: 210,
-      description: 'New curriculum history resource mapping prehistoric sites like Hadar, early civilizations, Battle of Adwa victory details, and constitutional updates.',
-      languageSupport: 'Bilingual',
-      proRequired: true,
-    },
-    {
-      id: 'g12_new_it',
-      title: 'Grade 12 Information Technology New Curriculum Textbook',
-      subject: 'Information Technology',
-      grade: 'Grade 12 New Curriculum',
-      chapters: ['Chapter 1: Advanced Information Systems & Databases', 'Chapter 2: Computer Networking & Cyber-Defenses', 'Chapter 3: Web Development Fundamentals (HTML, CSS, JS)', 'Chapter 4: Algorithms, Python Scripting & Emerging Algos'],
-      pages: 154,
-      description: 'Official guide covering relational database schemas, web authoring elements, and logical block scripting paradigms for high schoolers.',
-      languageSupport: 'Bilingual',
-      proRequired: true,
+  const [allModules, setAllModules] = useState<ModuleResource[]>(() => {
+    const baseList: ModuleResource[] = [...PREBUILT_MODULES];
+    try {
+      const saved = localStorage.getItem('ethiolearn_custom_books');
+      if (saved) {
+        return [...baseList, ...JSON.parse(saved)];
+      }
+    } catch (e) {
+      console.error('Error loading custom books:', e);
     }
-  ]);
+    return baseList;
+  });
 
   // Selected resource for detailed preview / AI interactions
   const [activeModule, setActiveModule] = useState<ModuleResource | null>(null);
@@ -362,6 +451,93 @@ export default function BookStoreView({
   const [inlineAiQuestion, setInlineAiQuestion] = useState('');
   const [inlineAiResponse, setInlineAiResponse] = useState('');
   const [inlineAiLoading, setInlineAiLoading] = useState(false);
+
+  // Custom book addition form/modal states
+  const [showAddBookModal, setShowAddBookModal] = useState(false);
+  const [newBookTitle, setNewBookTitle] = useState('');
+  const [newBookSubject, setNewBookSubject] = useState('');
+  const [newBookGrade, setNewBookGrade] = useState('Grade 12');
+  const [newBookDescription, setNewBookDescription] = useState('');
+  const [newBookChaptersText, setNewBookChaptersText] = useState('');
+  const [newBookPages, setNewBookPages] = useState('120');
+  const [newBookPdfUrl, setNewBookPdfUrl] = useState('');
+  const [newBookContent, setNewBookContent] = useState('');
+
+  const handleAddCustomBook = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBookTitle.trim() || !newBookSubject.trim()) {
+      alert(language === 'en' ? 'Please provide a title and subject for your book!' : 'እባክዎን የመጽሐፍ ርዕስ እና የትምህርት አይነት ያስገቡ!');
+      return;
+    }
+
+    const customId = `custom_book_${Date.now()}`;
+    const parsedChapters = newBookChaptersText
+      ? newBookChaptersText.split(/[,\n]+/).map(c => c.trim()).filter(Boolean)
+      : ['Chapter 1: Foundations', 'Chapter 2: Advanced Analysis', 'Chapter 3: Mock Revision'];
+
+    // Format content nicely for textbook engine
+    const dynamicContent: Record<string, any> = {};
+    parsedChapters.forEach((ch) => {
+      dynamicContent[ch] = {
+        title: ch,
+        intro: `Notes segment for ${ch} in ${newBookTitle}.`,
+        sections: [
+          {
+            title: `1. Study Module: ${ch}`,
+            body: newBookContent || `Detailed student learning sheet for ${ch}. Use Ezra's AI assistant or the summary tools below to flesh out standard study logs.`
+          }
+        ],
+        keyTerms: [
+          { term: 'Custom Reference (የተማሪ ማስታወሻ)', definition: 'Studying materials inputted by the student user.' }
+        ]
+      };
+    });
+
+    const newBook: ModuleResource = {
+      id: customId,
+      title: newBookTitle,
+      subject: newBookSubject,
+      grade: newBookGrade,
+      chapters: parsedChapters,
+      pages: parseInt(newBookPages) || 120,
+      description: newBookDescription || 'Student-uploaded custom study guide.',
+      languageSupport: 'Bilingual',
+      proRequired: false,
+      pdfUrl: newBookPdfUrl.trim() || undefined,
+      contentJson: JSON.stringify(dynamicContent),
+      isSupabase: false
+    };
+
+    try {
+      const saved = localStorage.getItem('ethiolearn_custom_books');
+      const customBooks = saved ? JSON.parse(saved) : [];
+      const updated = [...customBooks, newBook];
+      localStorage.setItem('ethiolearn_custom_books', JSON.stringify(updated));
+      
+      setAllModules(prev => [...prev, newBook]);
+      playSuccessChime();
+      alert(language === 'en' 
+        ? `Successfully added your book "${newBookTitle}"! It is now fully integrated with our AI Summarizers and Study Buddies.` 
+        : `መጽሐፍዎ "${newBookTitle}" በተሳካ ሁኔታ ተጨምሯል! አሁን ከአይ ረዳቱ ጋር አብሮ ይሰራል።`
+      );
+
+      // Reset form fields
+      setNewBookTitle('');
+      setNewBookSubject('');
+      setNewBookGrade('Grade 12');
+      setNewBookDescription('');
+      setNewBookChaptersText('');
+      setNewBookPages('120');
+      setNewBookPdfUrl('');
+      setNewBookContent('');
+      setShowAddBookModal(false);
+      setActiveModule(newBook);
+      setSelectedChapter(parsedChapters[0]);
+    } catch (err) {
+      console.error(err);
+      playFailureChime();
+    }
+  };
 
   // Sync Supabase Books dynamically
   const syncSupabase = async (manual = false) => {
@@ -1805,6 +1981,160 @@ VALUES (
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showAddBookModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[999] flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => setShowAddBookModal(false)}
+            id="add-custom-book-modal-overlay"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative"
+              onClick={(e) => e.stopPropagation()}
+              id="add-custom-book-modal-card"
+            >
+              <button
+                onClick={() => { playClickChime(); setShowAddBookModal(false); }}
+                className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="space-y-1.5">
+                <h3 className="font-serif font-black text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-[#078930]" />
+                  {language === 'en' ? 'Add Your Own Book / Module' : 'የራስዎን መጽሐፍ / ሞጁል ይጨምሩ'}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  {language === 'en' 
+                    ? 'Enter your textbook details. They will be saved securely to your browser storage.' 
+                    : 'የመጽሐፍዎን ዝርዝር ያስገቡ። መረጃው በአሳሽዎ ውስጥ ደህንነቱ በተጠበቀ ሁኔታ ይቀመጣል።'}
+                </p>
+              </div>
+
+              <form onSubmit={handleAddCustomBook} className="space-y-3.5 text-xs text-slate-700 dark:text-zinc-300">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-400">Book Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newBookTitle}
+                      onChange={(e) => setNewBookTitle(e.target.value)}
+                      placeholder="e.g. Freshman Civics Draft"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-400">Subject *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newBookSubject}
+                      onChange={(e) => setNewBookSubject(e.target.value)}
+                      placeholder="e.g. Civics, Computer Science"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-400">Grade Level</label>
+                    <select
+                      value={newBookGrade}
+                      onChange={(e) => setNewBookGrade(e.target.value)}
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none cursor-pointer"
+                    >
+                      <option value="Grade 12">Grade 12</option>
+                      <option value="Grade 12 New Curriculum">Grade 12 New Curriculum</option>
+                      <option value="University">University</option>
+                      <option value="Custom Study">Custom Study</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block font-bold uppercase text-slate-400">Total Pages</label>
+                    <input
+                      type="number"
+                      value={newBookPages}
+                      onChange={(e) => setNewBookPages(e.target.value)}
+                      placeholder="120"
+                      className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-400">Chapters (comma-separated or one per line) *</label>
+                  <textarea
+                    required
+                    value={newBookChaptersText}
+                    onChange={(e) => setNewBookChaptersText(e.target.value)}
+                    placeholder="Chapter 1: Democratic Values, Chapter 2: Constitution"
+                    rows={2}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930] resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-400">Description</label>
+                  <input
+                    type="text"
+                    value={newBookDescription}
+                    onChange={(e) => setNewBookDescription(e.target.value)}
+                    placeholder="Brief summary about the book content..."
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-400">Direct PDF URL (Optional Online Link)</label>
+                  <input
+                    type="url"
+                    value={newBookPdfUrl}
+                    onChange={(e) => setNewBookPdfUrl(e.target.value)}
+                    placeholder="https://example.com/textbook.pdf"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold uppercase text-slate-400">Copy/Paste Textbook Notes or Chapter Content (Optional)</label>
+                  <textarea
+                    value={newBookContent}
+                    onChange={(e) => setNewBookContent(e.target.value)}
+                    placeholder="Paste textbook details or notes content here. Our AI summarizes and tests you based directly on these details!"
+                    rows={4}
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-950 dark:text-zinc-100 outline-none focus:ring-1 focus:ring-[#078930]"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { playClickChime(); setShowAddBookModal(false); }}
+                    className="px-4 py-2 border rounded-xl text-xs font-bold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900 cursor-pointer animate-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#078930] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Save Textbook
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
